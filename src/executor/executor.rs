@@ -23,6 +23,10 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
         match o {
             commands::CommandOption::Switch(name) => match name.as_ref() {
                 OPTION_DECODING => global_mode = codecs::CodecMode::Decoding,
+                OPTION_NEW_LINE => command.codecs.push(commands::Codec {
+                    name: "newline".to_string(),
+                    options: vec![],
+                }),
                 _ => {
                     return Err(format!("unknown option: {}", name).into());
                 }
@@ -35,6 +39,20 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
                             name: "C".to_string(),
                             text: text.clone(),
                         }],
+                    };
+
+                    command.codecs.insert(0, codec);
+                }
+                OPTION_INPUT_FILE => {
+                    let codec = commands::Codec {
+                        name: "cat".to_string(),
+                        options: vec![
+                            commands::CommandOption::Switch("c".to_string()),
+                            commands::CommandOption::Value {
+                                name: "F".to_string(),
+                                text: text.clone(),
+                            },
+                        ],
                     };
 
                     command.codecs.insert(0, codec);

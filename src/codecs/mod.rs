@@ -42,6 +42,10 @@ impl CodecMetaInfo {
         self.codecs_map.insert(name.to_string(), codec);
     }
 
+    pub fn register_codec<C: 'static + Codec + Default + Send + Sync>(&mut self, name: &str) {
+        self.register(name, Box::<C>::default());
+    }
+
     pub fn lookup(&self, name: &str) -> Option<&(dyn Codec + Send + Sync)> {
         self.codecs_map.get(name).map(|v| v.deref())
     }

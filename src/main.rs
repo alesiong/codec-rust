@@ -1,11 +1,15 @@
 mod codecs;
 mod executor;
 
+use codecs::builtins::*;
+
 fn main() {
     let codecs = load_builtins();
 
     let args: Vec<_> = std::env::args().skip(1).collect();
     let mut tokenizer = executor::parser::Tokenizer::new(args);
+
+    // TODO: eliminate unwrap
 
     let commands = executor::parser::parse_command(&mut tokenizer).unwrap();
 
@@ -14,9 +18,14 @@ fn main() {
 
 fn load_builtins() -> codecs::CodecMetaInfo {
     let mut meta_info = codecs::CodecMetaInfo::new();
-    meta_info.register("id", Box::<codecs::builtins::IdCodecs>::default());
-    meta_info.register("const", Box::<codecs::builtins::ConstCodecs>::default());
-    meta_info.register("repeat", Box::<codecs::builtins::RepeatCodecs>::default());
+    meta_info.register_codec::<IdCodecs>("id");
+    meta_info.register_codec::<ConstCodecs>("const");
+    meta_info.register_codec::<RepeatCodecs>("repeat");
+    meta_info.register_codec::<AppendCodecs>("append");
+    meta_info.register_codec::<NewLineCodecs>("newline");
+    meta_info.register_codec::<CatCodecs>("cat");
+    meta_info.register_codec::<DropCodecs>("drop");
+    meta_info.register_codec::<TakeCodecs>("take");
 
     meta_info
 }
