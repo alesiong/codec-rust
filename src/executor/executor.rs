@@ -1,6 +1,8 @@
 use std::{
     collections::HashMap,
     io::{Read, Write},
+    ops::Deref,
+    ops::DerefMut,
 };
 
 use crate::{codecs, executor::commands};
@@ -18,30 +20,65 @@ pub fn execute(command: &commands::Command, codecs_info: &codecs::CodecMetaInfo)
     )
 }
 
-fn run_codecs<R: Read, W: Write>(
-    input: &mut R,
+enum OwnedOrBorrowed<'a, T>
+where
+    T: ?Sized + 'a,
+{
+    Borrowed(&'a mut T),
+    Owned(Box<T>),
+}
+
+impl<T: ?Sized> Deref for OwnedOrBorrowed<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            OwnedOrBorrowed::Borrowed(borrowed) => borrowed,
+            OwnedOrBorrowed::Owned(ref owned) => &owned,
+        }
+    }
+}
+
+impl<T: ?Sized> DerefMut for OwnedOrBorrowed<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            OwnedOrBorrowed::Borrowed(borrowed) => borrowed,
+            OwnedOrBorrowed::Owned(ref mut owned) => owned.deref_mut(),
+        }
+    }
+}
+
+fn run_codecs<R: Read + ?Sized, W: Write + ?Sized>(
+    mut input: &mut R,
     codec_list: &[commands::Codec],
     codecs_info: &codecs::CodecMetaInfo,
     mode: codecs::CodecMode,
     output: &mut W,
 ) -> Result<()> {
-    let mut previous_input = input as &mut dyn Read;
+    let mut previous_input = OwnedOrBorrowed::Borrowed(&mut input as &mut dyn Read);
     for c in codec_list {
-        let mut buffer = bytebuffer::ByteBuffer::new();
-        run_codec(&mut previous_input, c, codecs_info, mode, &mut buffer)?;
+        let (reader, mut writer) = pipe::pipe();
+        run_codec(
+            previous_input.deref_mut(),
+            c,
+            codecs_info,
+            mode,
+            &mut writer,
+        )?;
+        writer.flush()?;
 
-        previous_input = &mut buffer;
+        previous_input = OwnedOrBorrowed::Owned(Box::new(reader));
     }
-    let _ = std::io::copy(previous_input, output);
+    let _ = std::io::copy(previous_input.deref_mut(), output);
     Ok(())
 }
 
-fn run_codec<R: Read, W: Write>(
-    input: &mut R,
+fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
+    mut input: &mut R,
     codec: &commands::Codec,
     codecs_info: &codecs::CodecMetaInfo,
     mut mode: codecs::CodecMode,
-    output: &mut W,
+    mut output: &mut W,
 ) -> Result<()> {
     let options = make_codec_options(codec)?;
 
@@ -58,7 +95,7 @@ fn run_codec<R: Read, W: Write>(
             "codec not found: {}",
             codec.name
         )))?;
-    c.run_codec(input, mode, &options, output)
+    c.run_codec(&mut input, mode, &options, &mut output)
 }
 
 fn make_codec_options(codec: &commands::Codec) -> Result<HashMap<String, String>> {
