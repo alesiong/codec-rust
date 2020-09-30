@@ -1,5 +1,6 @@
 mod codecs;
 mod executor;
+mod utils;
 
 use codecs::builtins::*;
 
@@ -26,6 +27,9 @@ fn load_builtins() -> codecs::CodecMetaInfo {
     meta_info.register_codec::<CatCodecs>("cat");
     meta_info.register_codec::<DropCodecs>("drop");
     meta_info.register_codec::<TakeCodecs>("take");
+    meta_info.register_codec::<TeeCodecs>("tee");
+    meta_info.register_codec::<SinkCodecs>("sink");
+    meta_info.register_codec::<RedirectCodecs>("redirect");
 
     meta_info
 }

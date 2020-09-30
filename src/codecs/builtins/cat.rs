@@ -7,7 +7,7 @@ impl Codec for CatCodecs {
     fn run_codec(
         &self,
         input: &mut dyn std::io::Read,
-        global_mode: crate::codecs::CodecMode,
+        _global_mode: crate::codecs::CodecMode,
         options: &std::collections::HashMap<String, String>,
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {

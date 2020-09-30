@@ -9,6 +9,7 @@ use crate::{codecs, executor::commands};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+#[allow(unused)]
 const OPTION_ENCODING: &str = "e";
 const OPTION_DECODING: &str = "d";
 const OPTION_NEW_LINE: &str = "n";
@@ -56,6 +57,19 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
                     };
 
                     command.codecs.insert(0, codec);
+                }
+                OPTION_OUTPUT_FILE => {
+                     let codec = commands::Codec {
+                        name: "redirect".to_string(),
+                        options: vec![
+                            commands::CommandOption::Value {
+                                name: "O".to_string(),
+                                text: text.clone(),
+                            },
+                        ],
+                    };
+                    command.codecs.insert(0, codec);
+
                 }
                 _ => {
                     return Err(format!("unknown option: {}", name).into());
