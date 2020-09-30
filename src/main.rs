@@ -4,7 +4,10 @@ mod executor;
 fn main() {
     let codecs = load_builtins();
 
-    let commands = executor::commands::test_command();
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    let mut tokenizer = executor::parser::Tokenizer::new(args);
+
+    let commands = executor::parser::parse_command(&mut tokenizer).unwrap();
 
     executor::execute(commands, codecs).unwrap();
 }

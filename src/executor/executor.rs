@@ -9,8 +9,43 @@ use crate::{codecs, executor::commands};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-pub fn execute(command: commands::Command, codecs_info: codecs::CodecMetaInfo) -> Result<()> {
-    let global_mode = codecs::CodecMode::Encoding;
+const OPTION_ENCODING: &str = "e";
+const OPTION_DECODING: &str = "d";
+const OPTION_NEW_LINE: &str = "n";
+const OPTION_INPUT_STRING: &str = "I";
+const OPTION_INPUT_FILE: &str = "F";
+const OPTION_OUTPUT_FILE: &str = "O";
+const OPTION_HELP: &str = "h";
+
+pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInfo) -> Result<()> {
+    let mut global_mode = codecs::CodecMode::Encoding;
+    for o in &command.options {
+        match o {
+            commands::CommandOption::Switch(name) => match name.as_ref() {
+                OPTION_DECODING => global_mode = codecs::CodecMode::Decoding,
+                _ => {
+                    return Err(format!("unknown option: {}", name).into());
+                }
+            },
+            commands::CommandOption::Value { name, text } => match name.as_ref() {
+                OPTION_INPUT_STRING => {
+                    let codec = commands::Codec {
+                        name: "const".to_string(),
+                        options: vec![commands::CommandOption::Value {
+                            name: "C".to_string(),
+                            text: text.clone(),
+                        }],
+                    };
+
+                    command.codecs.insert(0, codec);
+                }
+                _ => {
+                    return Err(format!("unknown option: {}", name).into());
+                }
+            },
+        }
+    }
+
     run_codecs(
         Box::new(std::io::stdin()),
         command.codecs,
