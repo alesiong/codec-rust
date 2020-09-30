@@ -28,7 +28,7 @@ pub trait CodecUsage {
 }
 
 pub struct CodecMetaInfo {
-    codecs_map: HashMap<String, Box<dyn Codec>>,
+    codecs_map: HashMap<String, Box<dyn Codec + Send + Sync>>,
 }
 
 impl CodecMetaInfo {
@@ -38,11 +38,11 @@ impl CodecMetaInfo {
         }
     }
 
-    pub fn register(&mut self, name: &str, codec: Box<dyn Codec>) {
+    pub fn register(&mut self, name: &str, codec: Box<dyn Codec + Send + Sync>) {
         self.codecs_map.insert(name.to_string(), codec);
     }
 
-    pub fn lookup(&self, name: &str) -> Option<&dyn Codec> {
+    pub fn lookup(&self, name: &str) -> Option<&(dyn Codec + Send + Sync)> {
         self.codecs_map.get(name).map(|v| v.deref())
     }
 }

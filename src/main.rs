@@ -6,7 +6,7 @@ fn main() {
 
     let commands = executor::commands::test_command();
 
-    executor::execute(&commands, &codecs).unwrap();
+    executor::execute(commands, codecs).unwrap();
 }
 
 fn load_builtins() -> codecs::CodecMetaInfo {

@@ -1,73 +1,46 @@
 use std::{
     collections::HashMap,
     io::{Read, Write},
-    ops::Deref,
     ops::DerefMut,
+    sync::Arc,
 };
 
 use crate::{codecs, executor::commands};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-pub fn execute(command: &commands::Command, codecs_info: &codecs::CodecMetaInfo) -> Result<()> {
+pub fn execute(command: commands::Command, codecs_info: codecs::CodecMetaInfo) -> Result<()> {
     let global_mode = codecs::CodecMode::Encoding;
     run_codecs(
-        &mut std::io::stdin(),
-        &command.codecs,
-        codecs_info,
+        Box::new(std::io::stdin()),
+        command.codecs,
+        Arc::new(codecs_info),
         global_mode,
         &mut std::io::stdout(),
     )
 }
 
-enum OwnedOrBorrowed<'a, T>
-where
-    T: ?Sized + 'a,
-{
-    Borrowed(&'a mut T),
-    Owned(Box<T>),
-}
-
-impl<T: ?Sized> Deref for OwnedOrBorrowed<'_, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            OwnedOrBorrowed::Borrowed(borrowed) => borrowed,
-            OwnedOrBorrowed::Owned(ref owned) => &owned,
-        }
-    }
-}
-
-impl<T: ?Sized> DerefMut for OwnedOrBorrowed<'_, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            OwnedOrBorrowed::Borrowed(borrowed) => borrowed,
-            OwnedOrBorrowed::Owned(ref mut owned) => owned.deref_mut(),
-        }
-    }
-}
-
-fn run_codecs<R: Read + ?Sized, W: Write + ?Sized>(
-    mut input: &mut R,
-    codec_list: &[commands::Codec],
-    codecs_info: &codecs::CodecMetaInfo,
+fn run_codecs<R: 'static + Read + ?Sized + Send, W: Write + ?Sized>(
+    input: Box<R>,
+    codec_list: Vec<commands::Codec>,
+    codecs_info: Arc<codecs::CodecMetaInfo>,
     mode: codecs::CodecMode,
     output: &mut W,
 ) -> Result<()> {
-    let mut previous_input = OwnedOrBorrowed::Borrowed(&mut input as &mut dyn Read);
+    let mut previous_input = Box::new(input) as Box<dyn Read + Send>;
+
     for c in codec_list {
         let (reader, mut writer) = pipe::pipe();
-        run_codec(
-            previous_input.deref_mut(),
-            c,
-            codecs_info,
-            mode,
-            &mut writer,
-        )?;
-        writer.flush()?;
+        let codecs_info = Arc::clone(&codecs_info);
 
-        previous_input = OwnedOrBorrowed::Owned(Box::new(reader));
+        std::thread::Builder::new()
+            .name(c.name.clone())
+            .spawn(move || {
+                run_codec(&mut previous_input, &c, codecs_info, mode, &mut writer).unwrap();
+                writer.flush().unwrap();
+            })?;
+
+        previous_input = Box::new(reader);
     }
     let _ = std::io::copy(previous_input.deref_mut(), output);
     Ok(())
@@ -76,11 +49,11 @@ fn run_codecs<R: Read + ?Sized, W: Write + ?Sized>(
 fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
     mut input: &mut R,
     codec: &commands::Codec,
-    codecs_info: &codecs::CodecMetaInfo,
+    codecs_info: Arc<codecs::CodecMetaInfo>,
     mut mode: codecs::CodecMode,
     mut output: &mut W,
 ) -> Result<()> {
-    let options = make_codec_options(codec)?;
+    let options = make_codec_options(codec, Arc::clone(&codecs_info))?;
 
     if options.get("e").is_some() {
         mode = codecs::CodecMode::Encoding;
@@ -98,19 +71,35 @@ fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
     c.run_codec(&mut input, mode, &options, &mut output)
 }
 
-fn make_codec_options(codec: &commands::Codec) -> Result<HashMap<String, String>> {
+fn make_codec_options(
+    codec: &commands::Codec,
+    codecs_info: Arc<codecs::CodecMetaInfo>,
+) -> Result<HashMap<String, String>> {
     let mut option = HashMap::new();
 
     for o in &codec.options {
         match o {
             commands::CommandOption::Switch(name) => {
-                option.insert(name.clone(), "*".to_string());
+                option.insert(name.clone(), "*".to_string()); // TODO: eliminate hard coding
             }
             commands::CommandOption::Value { name, text } => match text {
                 commands::Text::String(value) => {
                     option.insert(name.clone(), value.clone());
                 }
-                commands::Text::Codecs { input, codecs } => todo!(),
+                commands::Text::Codecs { input, codecs } => {
+                    let input = bytebuffer::ByteBuffer::from_bytes(input.as_bytes());
+                    let mut buf = bytebuffer::ByteBuffer::new();
+
+                    run_codecs(
+                        Box::new(input),
+                        codecs.clone(),
+                        Arc::clone(&codecs_info),
+                        codecs::CodecMode::Encoding,
+                        &mut buf,
+                    )?;
+
+                    option.insert(name.clone(), buf.to_string());
+                }
             },
         }
     }

@@ -29,13 +29,15 @@ impl Codec for RepeatCodecs {
             }
         }
 
-        let mut buffer: Vec<u8> = vec![];
+        let mut buffer = bytebuffer::ByteBuffer::new();
 
-        for i in 0..times {
-            if i == 0 {
-                let _ = input.read_to_end(&mut buffer)?;
+        if times > 0 {
+            let mut writer = MultiWriter::new(vec![output, &mut buffer]);
+            let _ = std::io::copy(input, &mut writer)?;
+
+            for _ in 1..times {
+                let _ = output.write_all(&buffer.to_bytes())?;
             }
-            let _ = output.write_all(&buffer)?;
         }
 
         Ok(())
@@ -60,5 +62,37 @@ impl Codec for IdCodecs {
         options.insert("T".to_string(), "1".to_string());
 
         self.0.run_codec(input, global_mode, &options, output)
+    }
+}
+
+struct MultiWriter<'a> {
+    writers: Vec<&'a mut dyn std::io::Write>,
+}
+
+impl<'a> MultiWriter<'a> {
+    fn new(writers: Vec<&'a mut dyn std::io::Write>) -> MultiWriter<'a> {
+        MultiWriter { writers: writers }
+    }
+}
+
+impl std::io::Write for MultiWriter<'_> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        for writer in &mut self.writers {
+            let n = writer.write(buf)?;
+            if n != buf.len() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Interrupted,
+                    "short write",
+                ));
+            }
+        }
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        for writer in &mut self.writers {
+            writer.flush()?
+        }
+        Ok(())
     }
 }
