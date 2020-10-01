@@ -7,19 +7,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
-name = "bytebuffer"
-version = "0.2.1"
+name = "base64"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e822a21389d388828152aeae8bb43049196b09076e2a138f53351d8cf6576cf3"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
-name = "byteorder"
-version = "0.3.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29b2aa490a8f546381308d68fc79e6bd753cd3ad839f7a7172897f1feedfa175"
+checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
 name = "cfg-if"
@@ -31,7 +22,8 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 name = "codec-rust"
 version = "0.1.0"
 dependencies = [
- "bytebuffer",
+ "base64",
+ "hex",
  "pipe",
 ]
 
@@ -55,6 +47,12 @@ dependencies = [
  "cfg-if",
  "lazy_static",
 ]
+
+[[package]]
+name = "hex"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
 
 [[package]]
 name = "lazy_static"

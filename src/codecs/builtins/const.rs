@@ -22,7 +22,7 @@ impl Codec for ConstCodecs {
         ))?;
 
         self.0.run_codec(
-            &mut bytebuffer::ByteBuffer::from_bytes(value.as_bytes()),
+            &mut value.as_bytes(),
             global_mode,
             options,
             output,

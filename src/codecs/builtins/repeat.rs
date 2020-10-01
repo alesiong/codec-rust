@@ -32,14 +32,15 @@ impl Codec for RepeatCodecs {
             }
         }
 
-        let mut buffer = bytebuffer::ByteBuffer::new();
+        // TODO: (prof) consider new with capacity
+        let mut buffer = Vec::<u8>::new();
 
         if times > 0 {
             let mut writer = MultiWriter::new(vec![output, &mut buffer]);
             let _ = std::io::copy(input, &mut writer)?;
 
             for _ in 1..times {
-                let _ = output.write_all(&buffer.to_bytes())?;
+                let _ = output.write_all(&buffer)?;
             }
         }
 

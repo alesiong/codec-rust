@@ -1,7 +1,4 @@
-use crate::{
-    codecs::{Codec, CodecUsage},
-    utils::MultiWriter,
-};
+use crate::{codecs::Codec, utils::MultiWriter};
 
 #[derive(Default)]
 pub struct TeeCodecs;

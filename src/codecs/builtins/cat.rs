@@ -1,4 +1,4 @@
-use crate::codecs::{Codec, CodecUsage};
+use crate::codecs::Codec;
 
 #[derive(Default)]
 pub struct CatCodecs;
@@ -12,7 +12,7 @@ impl Codec for CatCodecs {
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let input_file = options.get("F").ok_or(Box::<dyn std::error::Error>::from(
-            "cat: missing required option output file (-F)",
+            "cat: missing required option input file (-F)",
         ))?;
 
         if !options.contains_key("c") {

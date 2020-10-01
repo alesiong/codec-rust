@@ -1,4 +1,4 @@
-use crate::codecs::{Codec, CodecUsage};
+use crate::codecs::Codec;
 
 #[derive(Default)]
 pub struct AppendCodecs;

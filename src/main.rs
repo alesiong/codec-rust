@@ -30,6 +30,8 @@ fn load_builtins() -> codecs::CodecMetaInfo {
     meta_info.register_codec::<TeeCodecs>("tee");
     meta_info.register_codec::<SinkCodecs>("sink");
     meta_info.register_codec::<RedirectCodecs>("redirect");
+    meta_info.register_codec::<Base64Codec>("base64");
+    meta_info.register_codec::<HexCodec>("hex");
 
     meta_info
 }

@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use crate::codecs::{Codec, CodecUsage};
+use crate::codecs::Codec;
 
 #[derive(Default)]
 pub struct TakeCodecs;

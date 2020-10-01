@@ -59,17 +59,14 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
                     command.codecs.insert(0, codec);
                 }
                 OPTION_OUTPUT_FILE => {
-                     let codec = commands::Codec {
+                    let codec = commands::Codec {
                         name: "redirect".to_string(),
-                        options: vec![
-                            commands::CommandOption::Value {
-                                name: "O".to_string(),
-                                text: text.clone(),
-                            },
-                        ],
+                        options: vec![commands::CommandOption::Value {
+                            name: "O".to_string(),
+                            text: text.clone(),
+                        }],
                     };
                     command.codecs.insert(0, codec);
-
                 }
                 _ => {
                     return Err(format!("unknown option: {}", name).into());
@@ -97,6 +94,7 @@ fn run_codecs<R: 'static + Read + ?Sized + Send, W: Write + ?Sized>(
     let mut previous_input = Box::new(input) as Box<dyn Read + Send>;
 
     for c in codec_list {
+        // TODO: (prof) PipeReader::BufRead::fill_buf, PipeWriter::Write::write use lots of tiny vec
         let (reader, mut writer) = pipe::pipe();
         let codecs_info = Arc::clone(&codecs_info);
 
@@ -154,18 +152,17 @@ fn make_codec_options(
                     option.insert(name.clone(), value.clone());
                 }
                 commands::Text::Codecs { input, codecs } => {
-                    let input = bytebuffer::ByteBuffer::from_bytes(input.as_bytes());
-                    let mut buf = bytebuffer::ByteBuffer::new();
+                    let mut buf = Vec::<u8>::new();
 
                     run_codecs(
-                        Box::new(input),
+                        Box::new(std::io::Cursor::new(input.clone())),
                         codecs.clone(),
                         Arc::clone(&codecs_info),
                         codecs::CodecMode::Encoding,
                         &mut buf,
                     )?;
 
-                    option.insert(name.clone(), buf.to_string());
+                    option.insert(name.clone(), unsafe { String::from_utf8_unchecked(buf) });
                 }
             },
         }

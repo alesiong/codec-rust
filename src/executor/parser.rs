@@ -40,7 +40,7 @@ impl Tokenizer {
             return Some(OPENING_PARENTHESIS.to_string());
         }
 
-        if next.starts_with(CLOSING_PARENTHESIS) && next != CLOSING_PARENTHESIS {
+        if next.ends_with(CLOSING_PARENTHESIS) && next != CLOSING_PARENTHESIS {
             self.look_next = Some(CLOSING_PARENTHESIS.to_string());
             return Some(next[..next.len() - CLOSING_PARENTHESIS.len()].to_string());
         }
@@ -66,7 +66,7 @@ impl Tokenizer {
             return Some(OPENING_PARENTHESIS);
         }
 
-        if next.starts_with(CLOSING_PARENTHESIS) && next != CLOSING_PARENTHESIS {
+        if next.ends_with(CLOSING_PARENTHESIS) && next != CLOSING_PARENTHESIS {
             return Some(&next[..next.len() - CLOSING_PARENTHESIS.len()]);
         }
 
@@ -94,11 +94,11 @@ fn is_special_token(token: &str) -> bool {
 }
 
 fn parse_codec(tokenizer: &mut Tokenizer) -> Result<Option<commands::Codec>> {
-    let name = tokenizer.peek();
-    if name.is_none() || is_special_token(name.unwrap()) {
+    let name = tokenizer.peek().unwrap_or_default();
+    if name.is_empty() || is_special_token(name) {
         return Ok(None);
     }
-    let name = name.unwrap().to_owned();
+    let name = name.to_owned();
 
     tokenizer.next();
 
@@ -161,6 +161,11 @@ fn parse_text(tokenizer: &mut Tokenizer) -> Result<commands::Text> {
 
         while let Some(codec) = parse_codec(tokenizer)? {
             codecs.push(codec);
+        }
+
+        let n = tokenizer.next().unwrap_or_default();
+        if n != CLOSING_PARENTHESIS {
+            return Err(format!("expect {}, found {}", CLOSING_PARENTHESIS, n).into());
         }
 
         text = commands::Text::Codecs {
