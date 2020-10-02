@@ -54,7 +54,7 @@ where
         }
     }
 
-    pub fn finalize(self) -> WriterDeathRattle<'w, W> {
+    pub fn finalize(self) -> impl DeathRattle<'w, Box<FinalizerOnce>, std::io::Result<()>> {
         WriterDeathRattle {
             writer: self.writer,
             write_buffer: self.write_buffer,
@@ -62,18 +62,22 @@ where
     }
 }
 
-pub struct WriterDeathRattle<'a, W>
+pub trait DeathRattle<'a, Args, Ret> {
+    fn death_rattle(self, arg: Args) -> Ret;
+}
+
+struct WriterDeathRattle<'w, W>
 where
     W: std::io::Write,
 {
-    writer: &'a mut W,
+    writer: &'w mut W,
     write_buffer: Vec<u8>,
 }
-impl<W> WriterDeathRattle<'_, W>
+impl<'w, W> DeathRattle<'w, Box<FinalizerOnce>, std::io::Result<()>> for WriterDeathRattle<'w, W>
 where
     W: std::io::Write,
 {
-    pub fn go(self, finalizer: Box<FinalizerOnce>) -> std::io::Result<()> {
+    fn death_rattle(self, finalizer: Box<FinalizerOnce>) -> std::io::Result<()> {
         if self.write_buffer.is_empty() {
             return Ok(());
         }

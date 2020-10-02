@@ -2,8 +2,9 @@ use block_cipher::generic_array;
 use block_modes::{block_cipher, block_padding};
 
 use crate::{
-    codecs::{Codec, CodecUsage, Options},
+    codecs::{Codec, CodecMode, CodecUsage, Options},
     utils::BytesToBytesEncoder,
+    utils::DeathRattle,
 };
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -47,7 +48,7 @@ impl Codec for AesCodec {
     fn run_codec(
         &self,
         input: &mut dyn std::io::Read,
-        global_mode: crate::codecs::CodecMode,
+        global_mode: CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
     ) -> Result<()> {
@@ -69,55 +70,68 @@ impl Codec for AesCodec {
 
         match key.len() * 8 {
             128 => match self.mode {
-                AesMode::Cbc => match global_mode {
-                    crate::codecs::CodecMode::Encoding => {
-                        encrypt::<block_modes::Cbc<_, _>, aes::Aes128>(&key, &iv, input, output)
+                AesMode::Cbc => {
+                    let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes128>(&key, &iv)?;
+                    match global_mode {
+                        CodecMode::Encoding => encrypt(cipher, input, output),
+                        CodecMode::Decoding => todo!(),
                     }
-                    crate::codecs::CodecMode::Decoding => todo!(),
-                },
-                AesMode::Ecb => match global_mode {
-                    crate::codecs::CodecMode::Encoding => {
-                        encrypt::<block_modes::Ecb<_, _>, aes::Aes128>(&key, &iv, input, output)
+                }
+                AesMode::Ecb => {
+                    let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes128>(&key, &iv)?;
+                    match global_mode {
+                        CodecMode::Encoding => encrypt(cipher, input, output),
+                        CodecMode::Decoding => todo!(),
                     }
-                    crate::codecs::CodecMode::Decoding => todo!(),
-                },
+                }
             },
             192 => match self.mode {
-                AesMode::Cbc => match global_mode {
-                    crate::codecs::CodecMode::Encoding => {
-                        encrypt::<block_modes::Cbc<_, _>, aes::Aes192>(&key, &iv, input, output)
+                AesMode::Cbc => {
+                    let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes192>(&key, &iv)?;
+                    match global_mode {
+                        CodecMode::Encoding => encrypt(cipher, input, output),
+                        CodecMode::Decoding => todo!(),
                     }
-                    crate::codecs::CodecMode::Decoding => todo!(),
-                },
-                AesMode::Ecb => match global_mode {
-                    crate::codecs::CodecMode::Encoding => {
-                        encrypt::<block_modes::Ecb<_, _>, aes::Aes192>(&key, &iv, input, output)
+                }
+                AesMode::Ecb => {
+                    let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes192>(&key, &iv)?;
+                    match global_mode {
+                        CodecMode::Encoding => encrypt(cipher, input, output),
+                        CodecMode::Decoding => todo!(),
                     }
-                    crate::codecs::CodecMode::Decoding => todo!(),
-                },
+                }
             },
             256 => match self.mode {
-                AesMode::Cbc => match global_mode {
-                    crate::codecs::CodecMode::Encoding => {
-                        encrypt::<block_modes::Cbc<_, _>, aes::Aes256>(&key, &iv, input, output)
+                AesMode::Cbc => {
+                    let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes256>(&key, &iv)?;
+                    match global_mode {
+                        CodecMode::Encoding => encrypt(cipher, input, output),
+                        CodecMode::Decoding => todo!(),
                     }
-                    crate::codecs::CodecMode::Decoding => todo!(),
-                },
-                AesMode::Ecb => match global_mode {
-                    crate::codecs::CodecMode::Encoding => {
-                        encrypt::<block_modes::Ecb<_, _>, aes::Aes256>(&key, &iv, input, output)
+                }
+                AesMode::Ecb => {
+                    let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes256>(&key, &iv)?;
+                    match global_mode {
+                        CodecMode::Encoding => encrypt(cipher, input, output),
+                        CodecMode::Decoding => todo!(),
                     }
-                    crate::codecs::CodecMode::Decoding => todo!(),
-                },
+                }
             },
             _ => return Err(format!("invalid key length: {}bit", key.len() * 8).into()),
         }
     }
 }
 
+fn new_cipher<M, C>(key: &[u8], iv: &[u8]) -> Result<M>
+where
+    M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
+    C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
+{
+    Ok(M::new_var(key, iv)?)
+}
+
 fn encrypt<M, C>(
-    key: &[u8],
-    iv: &[u8],
+    mut cipher: M,
     input: &mut dyn std::io::Read,
     mut output: &mut dyn std::io::Write,
 ) -> Result<()>
@@ -125,7 +139,6 @@ where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
     C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
 {
-    let mut cipher = M::new_var(key, iv)?;
     let mut writer = BytesToBytesEncoder::new(
         &mut output,
         Box::new(|buf| {
@@ -137,7 +150,7 @@ where
 
     writer
         .finalize()
-        .go(Box::new(|buf| Ok(Some(cipher.encrypt_vec(buf)))))?;
+        .death_rattle(Box::new(|buf| Ok(Some(cipher.encrypt_vec(buf)))))?;
     Ok(())
 }
 

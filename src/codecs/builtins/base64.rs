@@ -11,18 +11,18 @@ impl Codec for Base64Codec {
         options: &Options,
         mut output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let padding = options.get_switch("p");
+        let no_padding = options.get_switch("p");
         let encoding = if options.get_switch("u") {
-            if padding {
-                base64::URL_SAFE
-            } else {
+            if no_padding {
                 base64::URL_SAFE_NO_PAD
+            } else {
+                base64::URL_SAFE
             }
         } else {
-            if padding {
-                base64::STANDARD
-            } else {
+            if no_padding {
                 base64::STANDARD_NO_PAD
+            } else {
+                base64::STANDARD
             }
         };
 
