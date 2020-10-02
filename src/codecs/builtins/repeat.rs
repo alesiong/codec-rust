@@ -1,5 +1,5 @@
 use crate::{
-    codecs::{Codec, CodecUsage},
+    codecs::{Codec, CodecUsage, Options},
     utils::MultiWriter,
 };
 
@@ -21,15 +21,12 @@ impl Codec for RepeatCodecs {
         &self,
         input: &mut dyn std::io::Read,
         _global_mode: crate::codecs::CodecMode,
-        options: &std::collections::HashMap<String, String>,
+        options: &Options,
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut times = 0;
-        if let Some(t) = options.get("T") {
-            times = t.parse()?;
-            if times < 0 {
-                return Err("repeat: times cannot be minus".into());
-            }
+        let times = options.get_text("T")?.unwrap_or(0);
+        if times < 0 {
+            return Err("repeat: times cannot be minus".into());
         }
 
         // TODO: (prof) consider new with capacity
@@ -59,11 +56,11 @@ impl Codec for IdCodecs {
         &self,
         input: &mut dyn std::io::Read,
         global_mode: crate::codecs::CodecMode,
-        _options: &std::collections::HashMap<String, String>,
+        _options: &Options,
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut options = std::collections::HashMap::new();
-        options.insert("T".to_string(), "1".to_string());
+        let mut options = Options::new();
+        options.insert_text_str("T", 1);
 
         self.0.run_codec(input, global_mode, &options, output)
     }

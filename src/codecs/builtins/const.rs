@@ -1,4 +1,4 @@
-use crate::codecs::{builtins::IdCodecs, Codec, CodecUsage};
+use crate::codecs::{builtins::IdCodecs, Codec, CodecUsage, Options};
 
 #[derive(Default)]
 pub struct ConstCodecs(IdCodecs);
@@ -14,18 +14,16 @@ impl Codec for ConstCodecs {
         &self,
         _input: &mut dyn std::io::Read,
         global_mode: crate::codecs::CodecMode,
-        options: &std::collections::HashMap<String, String>,
+        options: &Options,
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let value = options.get("C").ok_or(Box::<dyn std::error::Error>::from(
-            "const: missing required option const value (-C)",
-        ))?;
+        let value = options
+            .get_text_raw("C")
+            .ok_or(Box::<dyn std::error::Error>::from(
+                "const: missing required option const value (-C)",
+            ))?;
 
-        self.0.run_codec(
-            &mut value.as_bytes(),
-            global_mode,
-            options,
-            output,
-        )
+        self.0
+            .run_codec(&mut value.as_slice(), global_mode, options, output)
     }
 }

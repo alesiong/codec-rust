@@ -29,36 +29,74 @@ impl std::io::Write for MultiWriter<'_> {
     }
 }
 
-pub struct BytesToBytesEncoder<'a, W, F>
+type Mapping<'a> = dyn 'a + FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>;
+type Finalizer = dyn FnMut(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
+type FinalizerOnce = dyn FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
+
+pub struct BytesToBytesEncoder<'w, 'm, W>
 where
-    W: 'a + std::io::Write,
-    F: Fn(&[u8]) -> Vec<u8>,
+    W: 'w + std::io::Write,
 {
-    writer: &'a mut W,
-    mapping: F,
+    writer: &'w mut W,
+    mapping: Box<Mapping<'m>>,
+    write_buffer: Vec<u8>,
 }
 
-impl<'a, W, F> BytesToBytesEncoder<'a, W, F>
+impl<'w, 'm, W> BytesToBytesEncoder<'w, 'm, W>
 where
     W: std::io::Write,
-    F: Fn(&[u8]) -> Vec<u8>,
 {
-    pub fn new(writer: &'a mut W, mapping: F) -> Self {
+    pub fn new(writer: &'w mut W, mapping: Box<Mapping<'m>>) -> Self {
         BytesToBytesEncoder {
             writer: writer,
             mapping: mapping,
+            write_buffer: vec![],
+        }
+    }
+
+    pub fn finalize(self) -> WriterDeathRattle<'w, W> {
+        WriterDeathRattle {
+            writer: self.writer,
+            write_buffer: self.write_buffer,
         }
     }
 }
 
-impl<W, F> std::io::Write for BytesToBytesEncoder<'_, W, F>
+pub struct WriterDeathRattle<'a, W>
 where
     W: std::io::Write,
-    F: Fn(&[u8]) -> Vec<u8>,
+{
+    writer: &'a mut W,
+    write_buffer: Vec<u8>,
+}
+impl<W> WriterDeathRattle<'_, W>
+where
+    W: std::io::Write,
+{
+    pub fn go(self, finalizer: Box<FinalizerOnce>) -> std::io::Result<()> {
+        if self.write_buffer.is_empty() {
+            return Ok(());
+        }
+        if let Some(bytes) = finalizer(&self.write_buffer)? {
+            return self.writer.write_all(&bytes);
+        }
+        Ok(())
+    }
+}
+
+impl<W> std::io::Write for BytesToBytesEncoder<'_, '_, W>
+where
+    W: std::io::Write,
 {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let to_write = &(self.mapping)(buf);
-        self.writer.write_all(to_write)?;
+        let mut pre_write_buffer = std::mem::replace(&mut self.write_buffer, vec![]);
+
+        pre_write_buffer.extend_from_slice(buf);
+
+        let (to_write, remain) = (self.mapping)(&pre_write_buffer)?;
+
+        self.write_buffer.extend_from_slice(remain);
+        self.writer.write_all(&to_write)?;
 
         Ok(buf.len())
     }
@@ -68,25 +106,24 @@ where
     }
 }
 
-pub struct BytesToBytesDecoder<'a, R, F>
+pub struct BytesToBytesDecoder<'a, R>
 where
     R: 'a + std::io::Read,
-    F: Fn(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>,
 {
     reader: &'a mut R,
-    mapping: F,
+    mapping: Box<Mapping<'a>>,
     write_buffer: Vec<u8>,
     remain_buffer: Vec<u8>,
     index_remain: usize,
     buffer: [u8; 1024],
+    finalizer: Box<Finalizer>,
 }
 
-impl<'a, R, F> BytesToBytesDecoder<'a, R, F>
+impl<'a, R> BytesToBytesDecoder<'a, R>
 where
     R: 'a + std::io::Read,
-    F: Fn(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>,
 {
-    pub fn new(reader: &'a mut R, mapping: F) -> Self {
+    pub fn new(reader: &'a mut R, mapping: Box<Mapping<'a>>) -> Self {
         Self {
             reader: reader,
             mapping: mapping,
@@ -94,7 +131,12 @@ where
             remain_buffer: vec![],
             index_remain: 0,
             buffer: [0; 1024],
+            finalizer: Box::new(|_| Ok(None)),
         }
+    }
+
+    pub fn set_finallizer(&mut self, finalizer: Box<Finalizer>) {
+        self.finalizer = finalizer;
     }
 
     fn remain_buffer_len(&self) -> usize {
@@ -102,10 +144,9 @@ where
     }
 }
 
-impl<R, F> std::io::Read for BytesToBytesDecoder<'_, R, F>
+impl<R> std::io::Read for BytesToBytesDecoder<'_, R>
 where
     R: std::io::Read,
-    F: Fn(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>,
 {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         if self.remain_buffer_len() > 0 {
@@ -120,10 +161,16 @@ where
         let n = self.reader.read(&mut self.buffer)?;
         if n == 0 {
             if !self.write_buffer.is_empty() {
-                return Err(Error::new(
-                    ErrorKind::UnexpectedEof,
-                    "eof reached with bytes left",
-                ));
+                if let Some(bytes) = (self.finalizer)(&self.write_buffer)? {
+                    self.remain_buffer = bytes;
+                    self.index_remain = self.remain_buffer.as_slice().read(buf)?;
+                    return Ok(self.index_remain);
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::UnexpectedEof,
+                        "eof reached with bytes left",
+                    ));
+                }
             }
             return Ok(0);
         }
@@ -131,7 +178,7 @@ where
         let mut pre_write_buffer = std::mem::replace(&mut self.write_buffer, vec![]);
         pre_write_buffer.extend_from_slice(&self.buffer[..n]);
 
-        let (result, remain) = (&self.mapping)(&pre_write_buffer)?;
+        let (result, remain) = (&mut self.mapping)(&pre_write_buffer)?;
         self.write_buffer.extend_from_slice(remain);
 
         if result.len() == 0 {

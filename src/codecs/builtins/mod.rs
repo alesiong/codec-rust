@@ -1,3 +1,4 @@
+mod aes;
 mod append;
 mod base64;
 mod cat;
@@ -8,6 +9,7 @@ mod repeat;
 mod sink;
 mod take;
 
+pub use self::aes::*;
 pub use self::base64::*;
 pub use self::hex::*;
 pub use append::*;

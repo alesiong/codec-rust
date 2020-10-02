@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     io::{Read, Write},
     ops::DerefMut,
     sync::Arc,
@@ -120,10 +119,10 @@ fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
 ) -> Result<()> {
     let options = make_codec_options(codec, Arc::clone(&codecs_info))?;
 
-    if options.get("e").is_some() {
+    if options.get_switch("e") {
         mode = codecs::CodecMode::Encoding;
     }
-    if options.get("d").is_some() {
+    if options.get_switch("d") {
         mode = codecs::CodecMode::Decoding;
     }
 
@@ -139,17 +138,17 @@ fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
 fn make_codec_options(
     codec: &commands::Codec,
     codecs_info: Arc<codecs::CodecMetaInfo>,
-) -> Result<HashMap<String, String>> {
-    let mut option = HashMap::new();
+) -> Result<codecs::Options> {
+    let mut option = codecs::Options::new();
 
     for o in &codec.options {
         match o {
             commands::CommandOption::Switch(name) => {
-                option.insert(name.clone(), "*".to_string()); // TODO: eliminate hard coding
+                option.insert_switch(&name); // TODO: eliminate hard coding
             }
             commands::CommandOption::Value { name, text } => match text {
                 commands::Text::String(value) => {
-                    option.insert(name.clone(), value.clone());
+                    option.insert_text(&name, value.as_bytes());
                 }
                 commands::Text::Codecs { input, codecs } => {
                     let mut buf = Vec::<u8>::new();
@@ -162,7 +161,7 @@ fn make_codec_options(
                         &mut buf,
                     )?;
 
-                    option.insert(name.clone(), unsafe { String::from_utf8_unchecked(buf) });
+                    option.insert_text(&name, &buf);
                 }
             },
         }

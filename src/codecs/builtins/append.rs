@@ -1,4 +1,4 @@
-use crate::codecs::Codec;
+use crate::codecs::{Codec, Options};
 
 #[derive(Default)]
 pub struct AppendCodecs;
@@ -11,15 +11,17 @@ impl Codec for AppendCodecs {
         &self,
         input: &mut dyn std::io::Read,
         _global_mode: crate::codecs::CodecMode,
-        options: &std::collections::HashMap<String, String>,
+        options: &Options,
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let value = options.get("A").ok_or(Box::<dyn std::error::Error>::from(
-            "append: missing required option append value (-A)",
-        ))?;
+        let value = options
+            .get_text_raw("A")
+            .ok_or(Box::<dyn std::error::Error>::from(
+                "append: missing required option append value (-A)",
+            ))?;
 
         let _ = std::io::copy(input, output)?;
-        output.write_all(value.as_bytes())?;
+        output.write_all(&value)?;
         Ok(())
     }
 }
@@ -29,11 +31,11 @@ impl Codec for NewLineCodecs {
         &self,
         input: &mut dyn std::io::Read,
         global_mode: crate::codecs::CodecMode,
-        _options: &std::collections::HashMap<String, String>,
+        _options: &Options,
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut options = std::collections::HashMap::new();
-        options.insert("A".to_string(), "\n".to_string());
+        let mut options = Options::new();
+        options.insert_text("A", b"\n");
 
         self.0.run_codec(input, global_mode, &options, output)
     }

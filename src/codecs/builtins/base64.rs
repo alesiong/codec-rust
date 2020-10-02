@@ -1,4 +1,4 @@
-use crate::codecs::Codec;
+use crate::codecs::{Codec, Options};
 
 #[derive(Default)]
 pub struct Base64Codec;
@@ -8,11 +8,11 @@ impl Codec for Base64Codec {
         &self,
         mut input: &mut dyn std::io::Read,
         global_mode: crate::codecs::CodecMode,
-        options: &std::collections::HashMap<String, String>,
+        options: &Options,
         mut output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let padding = options.contains_key("p");
-        let encoding = if options.contains_key("u") {
+        let padding = options.get_switch("p");
+        let encoding = if options.get_switch("u") {
             if padding {
                 base64::URL_SAFE
             } else {

@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use crate::codecs::Codec;
+use crate::codecs::{Codec, Options};
 
 #[derive(Default)]
 pub struct TakeCodecs;
@@ -10,13 +10,10 @@ impl Codec for TakeCodecs {
         &self,
         input: &mut dyn std::io::Read,
         _global_mode: crate::codecs::CodecMode,
-        options: &std::collections::HashMap<String, String>,
+        options: &Options,
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut drop_bytes = 0;
-        if let Some(t) = options.get("B") {
-            drop_bytes = t.parse()?;
-        };
+        let drop_bytes: u64 = options.get_text("B")?.unwrap_or(0);
 
         std::io::copy(&mut input.take(drop_bytes), output)?;
 
