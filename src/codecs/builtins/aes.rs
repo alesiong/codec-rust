@@ -20,12 +20,12 @@ enum AesMode {
 const BLOCK_SIZE: usize = 16;
 
 impl AesCodec {
-    pub fn new_cbc() -> Self {
-        AesCodec { mode: AesMode::Cbc }
+    pub fn new_cbc() -> Box<Self> {
+        Box::new(AesCodec { mode: AesMode::Cbc })
     }
 
-    pub fn new_ecb() -> Self {
-        AesCodec { mode: AesMode::Ecb }
+    pub fn new_ecb() -> Box<Self> {
+        Box::new(AesCodec { mode: AesMode::Ecb })
     }
 }
 

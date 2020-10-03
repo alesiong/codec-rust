@@ -36,7 +36,7 @@ pub struct BytesToBytesEncoder<'w, 'm, W>
 where
     W: 'w + std::io::Write,
 {
-    writer: &'w mut W,
+    writer: Option<&'w mut W>,
     mapping: Box<Mapping<'m>>,
     write_buffer: Vec<u8>,
 }
@@ -47,16 +47,27 @@ where
 {
     pub fn new(writer: &'w mut W, mapping: Box<Mapping<'m>>) -> Self {
         BytesToBytesEncoder {
-            writer: writer,
+            writer: Some(writer),
             mapping: mapping,
             write_buffer: vec![],
         }
     }
 
-    pub fn finalize(self) -> impl DeathRattle<'w, Box<Finalizer>, std::io::Result<()>> {
+    pub fn finalize(mut self) -> impl DeathRattle<'w, Box<Finalizer>, std::io::Result<()>> {
         WriterDeathRattle {
-            writer: self.writer,
-            write_buffer: self.write_buffer,
+            writer: self.writer.take().unwrap(),
+            write_buffer: std::mem::replace(&mut self.write_buffer, vec![]),
+        }
+    }
+}
+
+impl<'w, 'm, W> Drop for BytesToBytesEncoder<'w, 'm, W>
+where
+    W: std::io::Write,
+{
+    fn drop(&mut self) {
+        if !self.write_buffer.is_empty() {
+            panic!("bytes left without calling finalize");
         }
     }
 }
@@ -100,13 +111,13 @@ where
         let (to_write, remain) = (self.mapping)(&pre_write_buffer)?;
 
         self.write_buffer.extend_from_slice(remain);
-        self.writer.write_all(&to_write)?;
+        self.writer.as_mut().unwrap().write_all(&to_write)?;
 
         Ok(buf.len())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.writer.flush()
+        self.writer.as_mut().unwrap().flush()
     }
 }
 
@@ -165,7 +176,7 @@ where
 {
     fn drop(&mut self) {
         if self.need_finalize && !self.write_buffer.is_empty() {
-            panic!("bytes left without calling finalize")
+            panic!("bytes left without calling finalize");
         }
     }
 }
