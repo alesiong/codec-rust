@@ -30,8 +30,7 @@ impl std::io::Write for MultiWriter<'_> {
 }
 
 type Mapping<'a> = dyn 'a + FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>;
-type Finalizer = dyn FnMut(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
-type FinalizerOnce = dyn FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
+type Finalizer = dyn FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
 
 pub struct BytesToBytesEncoder<'w, 'm, W>
 where
@@ -54,7 +53,7 @@ where
         }
     }
 
-    pub fn finalize(self) -> impl DeathRattle<'w, Box<FinalizerOnce>, std::io::Result<()>> {
+    pub fn finalize(self) -> impl DeathRattle<'w, Box<Finalizer>, std::io::Result<()>> {
         WriterDeathRattle {
             writer: self.writer,
             write_buffer: self.write_buffer,
@@ -73,11 +72,12 @@ where
     writer: &'w mut W,
     write_buffer: Vec<u8>,
 }
-impl<'w, W> DeathRattle<'w, Box<FinalizerOnce>, std::io::Result<()>> for WriterDeathRattle<'w, W>
+
+impl<'w, W> DeathRattle<'w, Box<Finalizer>, std::io::Result<()>> for WriterDeathRattle<'w, W>
 where
     W: std::io::Write,
 {
-    fn death_rattle(self, finalizer: Box<FinalizerOnce>) -> std::io::Result<()> {
+    fn death_rattle(self, finalizer: Box<Finalizer>) -> std::io::Result<()> {
         if self.write_buffer.is_empty() {
             return Ok(());
         }
@@ -120,7 +120,7 @@ where
     remain_buffer: Vec<u8>,
     index_remain: usize,
     buffer: [u8; 1024],
-    finalizer: Box<Finalizer>,
+    need_finalize: bool,
 }
 
 impl<'a, R> BytesToBytesDecoder<'a, R>
@@ -135,16 +135,57 @@ where
             remain_buffer: vec![],
             index_remain: 0,
             buffer: [0; 1024],
-            finalizer: Box::new(|_| Ok(None)),
+            need_finalize: false,
         }
     }
 
-    pub fn set_finallizer(&mut self, finalizer: Box<Finalizer>) {
-        self.finalizer = finalizer;
+    pub fn set_need_finalize(&mut self, need_finalize: bool) {
+        self.need_finalize = need_finalize
+    }
+
+    pub fn finalize<'w, W>(
+        mut self,
+    ) -> impl DeathRattle<'static, (Box<Finalizer>, &'w mut W), std::io::Result<()>>
+    where
+        W: std::io::Write,
+    {
+        ReaderDeathRattle {
+            write_buffer: std::mem::replace(&mut self.write_buffer, vec![]),
+        }
     }
 
     fn remain_buffer_len(&self) -> usize {
         self.remain_buffer.len() - self.index_remain
+    }
+}
+
+impl<'a, R> Drop for BytesToBytesDecoder<'a, R>
+where
+    R: 'a + std::io::Read,
+{
+    fn drop(&mut self) {
+        if self.need_finalize && !self.write_buffer.is_empty() {
+            panic!("bytes left without calling finalize")
+        }
+    }
+}
+
+struct ReaderDeathRattle {
+    write_buffer: Vec<u8>,
+}
+
+impl<W> DeathRattle<'_, (Box<Finalizer>, &mut W), std::io::Result<()>> for ReaderDeathRattle
+where
+    W: std::io::Write,
+{
+    fn death_rattle(self, (finalizer, writer): (Box<Finalizer>, &mut W)) -> std::io::Result<()> {
+        if self.write_buffer.is_empty() {
+            return Ok(());
+        }
+        if let Some(bytes) = (finalizer)(&self.write_buffer)? {
+            writer.write_all(&bytes)?;
+        }
+        Ok(())
     }
 }
 
@@ -164,17 +205,11 @@ where
 
         let n = self.reader.read(&mut self.buffer)?;
         if n == 0 {
-            if !self.write_buffer.is_empty() {
-                if let Some(bytes) = (self.finalizer)(&self.write_buffer)? {
-                    self.remain_buffer = bytes;
-                    self.index_remain = self.remain_buffer.as_slice().read(buf)?;
-                    return Ok(self.index_remain);
-                } else {
-                    return Err(Error::new(
-                        ErrorKind::UnexpectedEof,
-                        "eof reached with bytes left",
-                    ));
-                }
+            if !self.need_finalize && !self.write_buffer.is_empty() {
+                return Err(Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "eof reached with bytes left",
+                ));
             }
             return Ok(0);
         }

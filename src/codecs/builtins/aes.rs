@@ -3,8 +3,7 @@ use block_modes::{block_cipher, block_padding};
 
 use crate::{
     codecs::{Codec, CodecMode, CodecUsage, Options},
-    utils::BytesToBytesEncoder,
-    utils::DeathRattle,
+    utils::{BytesToBytesDecoder, BytesToBytesEncoder, DeathRattle},
 };
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -74,14 +73,14 @@ impl Codec for AesCodec {
                     let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes128>(&key, &iv)?;
                     match global_mode {
                         CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => todo!(),
+                        CodecMode::Decoding => decrypt(cipher, input, output),
                     }
                 }
                 AesMode::Ecb => {
                     let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes128>(&key, &iv)?;
                     match global_mode {
                         CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => todo!(),
+                        CodecMode::Decoding => decrypt(cipher, input, output),
                     }
                 }
             },
@@ -90,14 +89,14 @@ impl Codec for AesCodec {
                     let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes192>(&key, &iv)?;
                     match global_mode {
                         CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => todo!(),
+                        CodecMode::Decoding => decrypt(cipher, input, output),
                     }
                 }
                 AesMode::Ecb => {
                     let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes192>(&key, &iv)?;
                     match global_mode {
                         CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => todo!(),
+                        CodecMode::Decoding => decrypt(cipher, input, output),
                     }
                 }
             },
@@ -106,14 +105,14 @@ impl Codec for AesCodec {
                     let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes256>(&key, &iv)?;
                     match global_mode {
                         CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => todo!(),
+                        CodecMode::Decoding => decrypt(cipher, input, output),
                     }
                 }
                 AesMode::Ecb => {
                     let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes256>(&key, &iv)?;
                     match global_mode {
                         CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => todo!(),
+                        CodecMode::Decoding => decrypt(cipher, input, output),
                     }
                 }
             },
@@ -151,6 +150,43 @@ where
     writer
         .finalize()
         .death_rattle(Box::new(|buf| Ok(Some(cipher.encrypt_vec(buf)))))?;
+
+    Ok(())
+}
+
+fn decrypt<M, C>(
+    mut cipher: M,
+    mut input: &mut dyn std::io::Read,
+    mut output: &mut dyn std::io::Write,
+) -> Result<()>
+where
+    M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
+    C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
+{
+    let mut reader = BytesToBytesDecoder::new(
+        &mut input,
+        Box::new(|buf| {
+            let (blocks, remain) = if buf.len() % BLOCK_SIZE == 0 {
+                buf.split_at(buf.len() - BLOCK_SIZE)
+            } else {
+                buf.split_at(buf.len() - buf.len() % BLOCK_SIZE)
+            };
+            Ok((decrypt_blocks(&mut cipher, blocks.to_vec()), remain))
+        }),
+    );
+
+    reader.set_need_finalize(true);
+
+    std::io::copy(&mut reader, output)?;
+
+    reader.finalize().death_rattle((
+        Box::new(|buf| match cipher.decrypt_vec(buf) {
+            Ok(r) => Ok(Some(r)),
+            Err(err) => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, err)),
+        }),
+        &mut output,
+    ))?;
+
     Ok(())
 }
 
@@ -161,6 +197,15 @@ where
 {
     cipher.encrypt_blocks(to_blocks(&mut plaintext_blocks));
     plaintext_blocks
+}
+
+fn decrypt_blocks<M, C>(cipher: &mut M, mut ciphertext_blocks: Vec<u8>) -> Vec<u8>
+where
+    M: block_modes::BlockMode<C, block_padding::Pkcs7>,
+    C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
+{
+    cipher.decrypt_blocks(to_blocks(&mut ciphertext_blocks));
+    ciphertext_blocks
 }
 
 fn to_blocks<N>(data: &mut [u8]) -> &mut [generic_array::GenericArray<u8, N>]
