@@ -9,6 +9,7 @@ mod hex;
 mod repeat;
 mod sink;
 mod take;
+mod url;
 
 pub use self::aes::*;
 pub use self::base64::*;
@@ -21,3 +22,4 @@ pub use r#const::*;
 pub use repeat::*;
 pub use sink::*;
 pub use take::*;
+pub use url::*;

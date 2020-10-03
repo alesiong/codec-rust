@@ -1,6 +1,6 @@
 use crate::{
-    codecs::{Codec, CodecMode, CodecUsage, Options},
-    utils::{BytesToBytesEncoder, DeathRattle},
+    codecs::{Codec, CodecMode, Options},
+    utils::BytesToBytesEncoder,
 };
 
 use digest::Digest;
@@ -33,7 +33,7 @@ impl Codec for HashCodec {
         &self,
         input: &mut dyn std::io::Read,
         global_mode: CodecMode,
-        options: &Options,
+        _options: &Options,
         output: &mut dyn std::io::Write,
     ) -> Result<(), Box<dyn std::error::Error>> {
         match global_mode {
