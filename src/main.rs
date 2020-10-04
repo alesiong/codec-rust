@@ -37,6 +37,8 @@ fn load_builtins() -> codecs::CodecMetaInfo {
     meta_info.register("md5", HashCodec::new_md5());
     meta_info.register("sha256", HashCodec::new_sha256());
     meta_info.register_codec::<UrlCodec>("url");
+    meta_info.register_codec::<ZlibCodec>("zlib");
+    meta_info.register_codec::<EscapeCodec>("escape");
 
     meta_info
 }
