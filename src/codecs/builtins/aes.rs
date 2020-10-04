@@ -149,7 +149,7 @@ where
 
     writer
         .finalize()
-        .death_rattle(Box::new(|buf| Ok(Some(cipher.encrypt_vec(buf)))))?;
+        .death_rattle(|buf| Ok(Some(cipher.encrypt_vec(buf))))?;
 
     Ok(())
 }
@@ -180,10 +180,10 @@ where
     std::io::copy(&mut reader, output)?;
 
     reader.finalize().death_rattle((
-        Box::new(|buf| match cipher.decrypt_vec(buf) {
+        |buf| match cipher.decrypt_vec(buf) {
             Ok(r) => Ok(Some(r)),
             Err(err) => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, err)),
-        }),
+        },
         &mut output,
     ))?;
 

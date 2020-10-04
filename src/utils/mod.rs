@@ -30,7 +30,7 @@ impl std::io::Write for MultiWriter<'_> {
 }
 
 type Mapping<'a> = dyn 'a + FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>;
-type Finalizer = dyn FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
+// trait Finalizer = FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
 
 pub struct BytesToBytesEncoder<'w, 'm, W>
 where
@@ -53,7 +53,11 @@ where
         }
     }
 
-    pub fn finalize(mut self) -> impl DeathRattle<'w, Box<Finalizer>, std::io::Result<()>> {
+    pub fn finalize<F>(mut self) -> impl DeathRattle<'w, F, std::io::Result<()>>
+    where
+        // type F should be inferred from the next death_rattle() call
+        F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
+    {
         WriterDeathRattle {
             writer: self.writer.take().unwrap(),
             write_buffer: std::mem::replace(&mut self.write_buffer, vec![]),
@@ -84,11 +88,12 @@ where
     write_buffer: Vec<u8>,
 }
 
-impl<'w, W> DeathRattle<'w, Box<Finalizer>, std::io::Result<()>> for WriterDeathRattle<'w, W>
+impl<'w, W, F> DeathRattle<'w, F, std::io::Result<()>> for WriterDeathRattle<'w, W>
 where
     W: std::io::Write,
+    F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
 {
-    fn death_rattle(self, finalizer: Box<Finalizer>) -> std::io::Result<()> {
+    fn death_rattle(self, finalizer: F) -> std::io::Result<()> {
         if self.write_buffer.is_empty() {
             return Ok(());
         }
@@ -154,11 +159,13 @@ where
         self.need_finalize = need_finalize
     }
 
-    pub fn finalize<'w, W>(
+    pub fn finalize<'w, W, F>(
         mut self,
-    ) -> impl DeathRattle<'static, (Box<Finalizer>, &'w mut W), std::io::Result<()>>
+    ) -> impl DeathRattle<'static, (F, &'w mut W), std::io::Result<()>>
     where
         W: std::io::Write,
+        // type F should be inferred from the next death_rattle() call
+        F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
     {
         ReaderDeathRattle {
             write_buffer: std::mem::replace(&mut self.write_buffer, vec![]),
@@ -185,11 +192,12 @@ struct ReaderDeathRattle {
     write_buffer: Vec<u8>,
 }
 
-impl<W> DeathRattle<'_, (Box<Finalizer>, &mut W), std::io::Result<()>> for ReaderDeathRattle
+impl<W, F> DeathRattle<'_, (F, &mut W), std::io::Result<()>> for ReaderDeathRattle
 where
     W: std::io::Write,
+    F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
 {
-    fn death_rattle(self, (finalizer, writer): (Box<Finalizer>, &mut W)) -> std::io::Result<()> {
+    fn death_rattle(self, (finalizer, writer): (F, &mut W)) -> std::io::Result<()> {
         if self.write_buffer.is_empty() {
             return Ok(());
         }

@@ -17,16 +17,21 @@ impl Codec for HexCodec {
 
         match global_mode {
             crate::codecs::CodecMode::Encoding => {
+                let mut capital_writer;
+                let mut lower_writer;
+
                 let mut writer = if use_capital {
-                    Box::new(BytesToBytesEncoder::new(
+                    capital_writer = BytesToBytesEncoder::new(
                         &mut output,
                         Box::new(|buf| Ok((hex::encode_upper(buf).into_bytes(), &[]))),
-                    )) as Box<dyn std::io::Write>
+                    );
+                    &mut capital_writer as &mut dyn std::io::Write
                 } else {
-                    Box::new(BytesToBytesEncoder::new(
+                    lower_writer = BytesToBytesEncoder::new(
                         &mut output,
                         Box::new(|buf| Ok((hex::encode(buf).into_bytes(), &[]))),
-                    )) as Box<dyn std::io::Write>
+                    );
+                    &mut lower_writer as &mut dyn std::io::Write
                 };
 
                 std::io::copy(input, &mut writer)?;
