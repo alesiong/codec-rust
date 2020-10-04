@@ -12,7 +12,7 @@ impl Codec for HexCodec {
         global_mode: crate::codecs::CodecMode,
         options: &Options,
         mut output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let use_capital = options.get_switch("c");
 
         match global_mode {

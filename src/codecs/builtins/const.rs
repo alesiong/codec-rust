@@ -16,12 +16,10 @@ impl Codec for ConstCodecs {
         global_mode: crate::codecs::CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let value = options
-            .get_text_raw("C")
-            .ok_or(Box::<dyn std::error::Error>::from(
-                "const: missing required option const value (-C)",
-            ))?;
+    ) -> anyhow::Result<()> {
+        let value = options.get_text_raw("C").ok_or(anyhow::anyhow!(
+            "const: missing required option const value (-C)",
+        ))?;
 
         self.0
             .run_codec(&mut value.as_slice(), global_mode, options, output)

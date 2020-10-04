@@ -15,7 +15,7 @@ impl Codec for EscapeCodec {
         global_mode: CodecMode,
         _options: &Options,
         mut output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         match global_mode {
             CodecMode::Encoding => {
                 let mut writer = BytesToBytesEncoder::new(

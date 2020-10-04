@@ -10,7 +10,7 @@ impl Codec for TeeCodecs {
         _global_mode: crate::codecs::CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let mut writers = Vec::with_capacity(2);
 
         let mut file;
@@ -41,7 +41,7 @@ impl Codec for SinkCodecs {
         global_mode: crate::codecs::CodecMode,
         _options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let mut options = Options::new();
         options.insert_switch("c");
 
@@ -59,12 +59,10 @@ impl Codec for RedirectCodecs {
         global_mode: crate::codecs::CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let output_file = options
-            .get_text_raw("O")
-            .ok_or(Box::<dyn std::error::Error>::from(
-                "redirect: missing required option output file (-O)",
-            ))?;
+    ) -> anyhow::Result<()> {
+        let output_file = options.get_text_raw("O").ok_or(anyhow::anyhow!(
+            "redirect: missing required option output file (-O)",
+        ))?;
 
         let mut options = Options::new();
         options.insert_switch("c");

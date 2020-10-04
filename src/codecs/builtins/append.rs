@@ -13,12 +13,10 @@ impl Codec for AppendCodecs {
         _global_mode: crate::codecs::CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let value = options
-            .get_text_raw("A")
-            .ok_or(Box::<dyn std::error::Error>::from(
-                "append: missing required option append value (-A)",
-            ))?;
+    ) -> anyhow::Result<()> {
+        let value = options.get_text_raw("A").ok_or(anyhow::anyhow!(
+            "append: missing required option append value (-A)",
+        ))?;
 
         let _ = std::io::copy(input, output)?;
         output.write_all(&value)?;
@@ -33,7 +31,7 @@ impl Codec for NewLineCodecs {
         global_mode: crate::codecs::CodecMode,
         _options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let mut options = Options::new();
         options.insert_text("A", b"\n");
 

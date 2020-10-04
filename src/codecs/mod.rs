@@ -20,7 +20,7 @@ pub trait Codec {
         global_mode: CodecMode,
         options: &Options,
         output: &mut dyn Write,
-    ) -> Result<(), Box<dyn Error>>;
+    ) -> anyhow::Result<()>;
 }
 
 pub trait CodecUsage {
@@ -86,10 +86,10 @@ impl Options {
         Some(self.options.get(name)?.clone().unwrap())
     }
 
-    pub fn get_text<T>(&self, name: &str) -> Result<Option<T>, Box<dyn Error>>
+    pub fn get_text<T>(&self, name: &str) -> anyhow::Result<Option<T>>
     where
         T: std::str::FromStr,
-        <T as std::str::FromStr>::Err: 'static + Error,
+        <T as std::str::FromStr>::Err: 'static + Error + Sync + Send,
     {
         debug_assert!(name.chars().next().unwrap().is_uppercase());
 

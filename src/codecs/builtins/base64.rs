@@ -10,7 +10,7 @@ impl Codec for Base64Codec {
         global_mode: crate::codecs::CodecMode,
         options: &Options,
         mut output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let no_padding = options.get_switch("p");
         let encoding = if options.get_switch("u") {
             if no_padding {

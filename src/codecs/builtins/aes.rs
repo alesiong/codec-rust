@@ -6,8 +6,6 @@ use crate::{
     utils::{BytesToBytesDecoder, BytesToBytesEncoder, DeathRattle},
 };
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
 pub struct AesCodec {
     mode: AesMode,
 }
@@ -50,20 +48,14 @@ impl Codec for AesCodec {
         global_mode: CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         let key = options
             .get_text_raw("K")
-            .ok_or(Box::<dyn std::error::Error>::from(
-                "aes: missing required option key (-K)",
-            ))?;
+            .ok_or(anyhow::anyhow!("aes: missing required option key (-K)"))?;
         let iv = match self.mode {
-            AesMode::Cbc => {
-                options
-                    .get_text_raw("IV")
-                    .ok_or(Box::<dyn std::error::Error>::from(
-                        "aes[cbc]: missing required option iv (-IV)",
-                    ))?
-            }
+            AesMode::Cbc => options.get_text_raw("IV").ok_or(anyhow::anyhow!(
+                "aes[cbc]: missing required option iv (-IV)",
+            ))?,
             AesMode::Ecb => Default::default(),
         };
 
@@ -116,12 +108,12 @@ impl Codec for AesCodec {
                     }
                 }
             },
-            _ => return Err(format!("invalid key length: {}bit", key.len() * 8).into()),
+            _ => anyhow::bail!("invalid key length: {}bit", key.len() * 8),
         }
     }
 }
 
-fn new_cipher<M, C>(key: &[u8], iv: &[u8]) -> Result<M>
+fn new_cipher<M, C>(key: &[u8], iv: &[u8]) -> anyhow::Result<M>
 where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
     C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
@@ -133,7 +125,7 @@ fn encrypt<M, C>(
     mut cipher: M,
     input: &mut dyn std::io::Read,
     mut output: &mut dyn std::io::Write,
-) -> Result<()>
+) -> anyhow::Result<()>
 where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
     C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
@@ -158,7 +150,7 @@ fn decrypt<M, C>(
     mut cipher: M,
     mut input: &mut dyn std::io::Read,
     mut output: &mut dyn std::io::Write,
-) -> Result<()>
+) -> anyhow::Result<()>
 where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
     C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,

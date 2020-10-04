@@ -23,7 +23,7 @@ impl Codec for UrlCodec {
         global_mode: CodecMode,
         options: &Options,
         mut output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let escape = if options.get_switch("p") {
             escape_path
         } else {

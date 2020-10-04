@@ -23,10 +23,10 @@ impl Codec for RepeatCodecs {
         _global_mode: crate::codecs::CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let times = options.get_text("T")?.unwrap_or(0);
         if times < 0 {
-            return Err("repeat: times cannot be minus".into());
+            anyhow::bail!("repeat: times cannot be minus");
         }
 
         // TODO: (prof) consider new with capacity
@@ -58,7 +58,7 @@ impl Codec for IdCodecs {
         global_mode: crate::codecs::CodecMode,
         _options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let mut options = Options::new();
         options.insert_text_str("T", 1);
 

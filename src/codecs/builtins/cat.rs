@@ -10,13 +10,10 @@ impl Codec for CatCodecs {
         _global_mode: crate::codecs::CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let input_file =
-            options
-                .get_text::<String>("F")?
-                .ok_or(Box::<dyn std::error::Error>::from(
-                    "cat: missing required option input file (-F)",
-                ))?;
+    ) -> anyhow::Result<()> {
+        let input_file = options.get_text::<String>("F")?.ok_or(anyhow::anyhow!(
+            "cat: missing required option input file (-F)",
+        ))?;
 
         if !options.get_switch("c") {
             let _ = std::io::copy(input, output)?;

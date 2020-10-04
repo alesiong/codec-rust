@@ -12,7 +12,7 @@ impl Codec for ZlibCodec {
         global_mode: CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         match global_mode {
             CodecMode::Encoding => {
                 let level = options

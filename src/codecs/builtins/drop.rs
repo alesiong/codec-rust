@@ -12,7 +12,7 @@ impl Codec for DropCodecs {
         _global_mode: crate::codecs::CodecMode,
         options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         let drop_bytes = options.get_text("B")?.unwrap_or(0);
 
         std::io::copy(&mut input.take(drop_bytes), &mut std::io::sink())?;

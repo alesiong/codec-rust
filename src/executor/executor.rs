@@ -4,9 +4,9 @@ use std::{
     sync::Arc,
 };
 
-use crate::{codecs, executor::commands};
+use anyhow::Result;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::{codecs, executor::commands};
 
 #[allow(unused)]
 const OPTION_ENCODING: &str = "e";
@@ -28,7 +28,7 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
                     options: vec![],
                 }),
                 _ => {
-                    return Err(format!("unknown option: {}", name).into());
+                    anyhow::bail!("unknown option: {}", name);
                 }
             },
             commands::CommandOption::Value { name, text } => match name.as_ref() {
@@ -68,7 +68,7 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
                     command.codecs.insert(0, codec);
                 }
                 _ => {
-                    return Err(format!("unknown option: {}", name).into());
+                    anyhow::bail!("unknown option: {}", name);
                 }
             },
         }
@@ -128,10 +128,7 @@ fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
 
     let c = codecs_info
         .lookup(&codec.name)
-        .ok_or(Box::<dyn std::error::Error>::from(format!(
-            "codec not found: {}",
-            codec.name
-        )))?;
+        .ok_or(anyhow::anyhow!("codec not found: {}", codec.name))?;
     c.run_codec(&mut input, mode, &options, &mut output)
 }
 

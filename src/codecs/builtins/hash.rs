@@ -35,13 +35,13 @@ impl Codec for HashCodec {
         global_mode: CodecMode,
         _options: &Options,
         output: &mut dyn std::io::Write,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> anyhow::Result<()> {
         match global_mode {
             CodecMode::Encoding => match self.hash_type {
                 HashType::Md5 => digest::<md5::Md5>(input, output),
                 HashType::Sha256 => digest::<sha2::Sha256>(input, output),
             },
-            CodecMode::Decoding => Err("hash: cannot decode".into()),
+            CodecMode::Decoding => Err(anyhow::anyhow!("hash: cannot decode")),
         }
     }
 }
@@ -49,7 +49,7 @@ impl Codec for HashCodec {
 fn digest<D: Digest>(
     input: &mut dyn std::io::Read,
     mut output: &mut dyn std::io::Write,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> anyhow::Result<()> {
     let mut hasher = D::new();
 
     let mut writer = BytesToBytesEncoder::new(
