@@ -141,7 +141,7 @@ fn make_codec_options(
     for o in &codec.options {
         match o {
             commands::CommandOption::Switch(name) => {
-                option.insert_switch(&name); // TODO: eliminate hard coding
+                option.insert_switch(&name);
             }
             commands::CommandOption::Value { name, text } => match text {
                 commands::Text::String(value) => {

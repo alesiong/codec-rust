@@ -1,4 +1,4 @@
-use crate::executor::commands;
+use crate::{executor::commands, utils::replace_with_default};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -32,7 +32,7 @@ impl Tokenizer {
             return None;
         }
 
-        let next = &self.text[self.current_pos];
+        let next = replace_with_default(&mut self.text[self.current_pos]);
         self.current_pos += 1;
 
         if next.starts_with(OPENING_PARENTHESIS) && next != OPENING_PARENTHESIS {
@@ -45,7 +45,7 @@ impl Tokenizer {
             return Some(next[..next.len() - CLOSING_PARENTHESIS.len()].to_string());
         }
 
-        Some(next.clone())
+        Some(next)
     }
 
     fn peek(&mut self) -> Option<&str> {

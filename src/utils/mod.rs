@@ -252,3 +252,7 @@ where
         Ok(n)
     }
 }
+
+pub fn replace_with_default<T: Default>(dest: &mut T)  -> T{
+    std::mem::replace(dest, T::default())
+}
