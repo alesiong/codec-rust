@@ -15,8 +15,6 @@ enum AesMode {
     Ecb,
 }
 
-const BLOCK_SIZE: usize = 16;
-
 impl AesCodec {
     pub fn new_cbc() -> Box<Self> {
         Box::new(AesCodec { mode: AesMode::Cbc })
@@ -130,10 +128,12 @@ where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
     C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
 {
+    let block_size = block_size::<C>();
+
     let mut writer = BytesToBytesEncoder::new(
         &mut output,
         Box::new(|buf| {
-            let (blocks, remain) = buf.split_at(buf.len() - buf.len() % BLOCK_SIZE);
+            let (blocks, remain) = buf.split_at(buf.len() - buf.len() % block_size;
             Ok((encrypt_blocks(&mut cipher, blocks.to_vec()), remain))
         }),
     );
@@ -155,13 +155,15 @@ where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
     C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
 {
+    let block_size = block_size::<C>();
+
     let mut reader = BytesToBytesDecoder::new(
         &mut input,
         Box::new(|buf| {
-            let (blocks, remain) = if buf.len() % BLOCK_SIZE == 0 {
-                buf.split_at(buf.len() - BLOCK_SIZE)
+            let (blocks, remain) = if buf.len() % block_size == 0 {
+                buf.split_at(buf.len() - block_size)
             } else {
-                buf.split_at(buf.len() - buf.len() % BLOCK_SIZE)
+                buf.split_at(buf.len() - buf.len() % block_size)
             };
             Ok((decrypt_blocks(&mut cipher, blocks.to_vec()), remain))
         }),
@@ -214,4 +216,11 @@ where
             data.len() / n,
         )
     }
+}
+
+fn block_size<C>() -> usize
+where
+    C: block_cipher::BlockCipher,
+{
+    <C::BlockSize as generic_array::typenum::Unsigned>::to_usize()
 }
