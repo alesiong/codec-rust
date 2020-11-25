@@ -21,16 +21,14 @@ impl Codec for HexCodec {
                 let mut lower_writer;
 
                 let mut writer = if use_capital {
-                    capital_writer = BytesToBytesEncoder::new(
-                        &mut output,
-                        Box::new(|buf| Ok((hex::encode_upper(buf).into_bytes(), &[]))),
-                    );
+                    capital_writer = BytesToBytesEncoder::new(&mut output, |buf| {
+                        Ok((hex::encode_upper(buf).into_bytes(), &[]))
+                    });
                     &mut capital_writer as &mut dyn std::io::Write
                 } else {
-                    lower_writer = BytesToBytesEncoder::new(
-                        &mut output,
-                        Box::new(|buf| Ok((hex::encode(buf).into_bytes(), &[]))),
-                    );
+                    lower_writer = BytesToBytesEncoder::new(&mut output, |buf| {
+                        Ok((hex::encode(buf).into_bytes(), &[]))
+                    });
                     &mut lower_writer as &mut dyn std::io::Write
                 };
 

@@ -52,13 +52,10 @@ fn digest<D: Digest>(
 ) -> anyhow::Result<()> {
     let mut hasher = D::new();
 
-    let mut writer = BytesToBytesEncoder::new(
-        &mut output,
-        Box::new(|buf| {
-            hasher.update(buf);
-            Ok(Default::default())
-        }),
-    );
+    let mut writer = BytesToBytesEncoder::new(&mut output, |buf| {
+        hasher.update(buf);
+        Ok(Default::default())
+    });
 
     std::io::copy(input, &mut writer)?;
 

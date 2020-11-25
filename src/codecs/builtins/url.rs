@@ -32,13 +32,10 @@ impl Codec for UrlCodec {
 
         match global_mode {
             CodecMode::Encoding => {
-                let mut writer = BytesToBytesEncoder::new(
-                    &mut output,
-                    Box::new(|buf| {
-                        let result = escape(buf);
-                        Ok((result.into_bytes(), &[]))
-                    }),
-                );
+                let mut writer = BytesToBytesEncoder::new(&mut output, |buf| {
+                    let result = escape(buf);
+                    Ok((result.into_bytes(), &[]))
+                });
 
                 std::io::copy(input, &mut writer)?;
                 Ok(())

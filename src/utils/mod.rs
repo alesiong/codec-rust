@@ -32,20 +32,24 @@ impl std::io::Write for MultiWriter<'_> {
 type Mapping<'a> = dyn 'a + FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>;
 // trait Finalizer = FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
 
-pub struct BytesToBytesEncoder<'w, 'm, W>
-where
-    W: 'w + std::io::Write,
-{
-    writer: Option<&'w mut W>,
-    mapping: Box<Mapping<'m>>,
-    write_buffer: Vec<u8>,
-}
-
-impl<'w, 'm, W> BytesToBytesEncoder<'w, 'm, W>
+pub struct BytesToBytesEncoder<'w, W, M>
 where
     W: std::io::Write,
 {
-    pub fn new(writer: &'w mut W, mapping: Box<Mapping<'m>>) -> Self {
+    writer: Option<&'w mut W>,
+    mapping: M,
+    write_buffer: Vec<u8>,
+}
+
+impl<'w, W, M> BytesToBytesEncoder<'w, W, M>
+where
+    W: std::io::Write,
+    M: FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>,
+{
+    pub fn new<'m>(writer: &'w mut W, mapping: M) -> Self
+    where
+        M: 'm,
+    {
         BytesToBytesEncoder {
             writer: Some(writer),
             mapping: mapping,
@@ -53,19 +57,19 @@ where
         }
     }
 
-    pub fn finalize<F>(mut self) -> impl DeathRattle<'w, F, std::io::Result<()>>
+    pub fn finalize<F>(mut self) -> Box<dyn 'w + DeathRattle<'w, F, std::io::Result<()>>>
     where
         // type F should be inferred from the next death_rattle() call
         F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
     {
-        WriterDeathRattle {
+        Box::new(WriterDeathRattle {
             writer: self.writer.take().unwrap(),
             write_buffer: std::mem::replace(&mut self.write_buffer, vec![]),
-        }
+        })
     }
 }
 
-impl<'w, 'm, W> Drop for BytesToBytesEncoder<'w, 'm, W>
+impl<W, M> Drop for BytesToBytesEncoder<'_, W, M>
 where
     W: std::io::Write,
 {
@@ -77,7 +81,7 @@ where
 }
 
 pub trait DeathRattle<'a, Args, Ret> {
-    fn death_rattle(self, arg: Args) -> Ret;
+    fn death_rattle(self: Box<Self>, arg: Args) -> Ret;
 }
 
 struct WriterDeathRattle<'w, W>
@@ -93,7 +97,7 @@ where
     W: std::io::Write,
     F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
 {
-    fn death_rattle(self, finalizer: F) -> std::io::Result<()> {
+    fn death_rattle(self: Box<Self>, finalizer: F) -> std::io::Result<()> {
         if self.write_buffer.is_empty() {
             return Ok(());
         }
@@ -104,9 +108,10 @@ where
     }
 }
 
-impl<W> std::io::Write for BytesToBytesEncoder<'_, '_, W>
+impl<W, M> std::io::Write for BytesToBytesEncoder<'_, W, M>
 where
     W: std::io::Write,
+    M: FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>,
 {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut pre_write_buffer = std::mem::replace(&mut self.write_buffer, vec![]);
@@ -161,15 +166,15 @@ where
 
     pub fn finalize<'w, W, F>(
         mut self,
-    ) -> impl DeathRattle<'static, (F, &'w mut W), std::io::Result<()>>
+    ) -> Box<dyn 'w + DeathRattle<'static, (F, &'w mut W), std::io::Result<()>>>
     where
         W: std::io::Write,
         // type F should be inferred from the next death_rattle() call
         F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
     {
-        ReaderDeathRattle {
+        Box::new(ReaderDeathRattle {
             write_buffer: std::mem::replace(&mut self.write_buffer, vec![]),
-        }
+        })
     }
 
     fn remain_buffer_len(&self) -> usize {
@@ -197,7 +202,7 @@ where
     W: std::io::Write,
     F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
 {
-    fn death_rattle(self, (finalizer, writer): (F, &mut W)) -> std::io::Result<()> {
+    fn death_rattle(self: Box<Self>, (finalizer, writer): (F, &mut W)) -> std::io::Result<()> {
         if self.write_buffer.is_empty() {
             return Ok(());
         }
@@ -253,6 +258,6 @@ where
     }
 }
 
-pub fn replace_with_default<T: Default>(dest: &mut T)  -> T{
+pub fn replace_with_default<T: Default>(dest: &mut T) -> T {
     std::mem::replace(dest, T::default())
 }

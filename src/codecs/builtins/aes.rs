@@ -3,7 +3,7 @@ use block_modes::{block_cipher, block_padding};
 
 use crate::{
     codecs::{Codec, CodecMode, CodecUsage, Options},
-    utils::{BytesToBytesDecoder, BytesToBytesEncoder, DeathRattle},
+    utils::{BytesToBytesDecoder, BytesToBytesEncoder},
 };
 
 pub struct AesCodec {
@@ -130,13 +130,10 @@ where
 {
     let block_size = block_size::<C>();
 
-    let mut writer = BytesToBytesEncoder::new(
-        &mut output,
-        Box::new(|buf| {
-            let (blocks, remain) = buf.split_at(buf.len() - buf.len() % block_size;
-            Ok((encrypt_blocks(&mut cipher, blocks.to_vec()), remain))
-        }),
-    );
+    let mut writer = BytesToBytesEncoder::new(&mut output, |buf| {
+        let (blocks, remain) = buf.split_at(buf.len() - buf.len() % block_size);
+        Ok((encrypt_blocks(&mut cipher, blocks.to_vec()), remain))
+    });
     std::io::copy(input, &mut writer)?;
 
     writer

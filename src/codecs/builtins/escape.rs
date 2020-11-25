@@ -18,18 +18,13 @@ impl Codec for EscapeCodec {
     ) -> anyhow::Result<()> {
         match global_mode {
             CodecMode::Encoding => {
-                let mut writer = BytesToBytesEncoder::new(
-                    &mut output,
-                    Box::new(|buf| {
-                        let result = std::str::from_utf8(buf)
-                            .map_err(|err| {
-                                std::io::Error::new(std::io::ErrorKind::InvalidData, err)
-                            })?
-                            .escape_default()
-                            .to_string();
-                        Ok((result.into_bytes(), &[]))
-                    }),
-                );
+                let mut writer = BytesToBytesEncoder::new(&mut output, |buf| {
+                    let result = std::str::from_utf8(buf)
+                        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?
+                        .escape_default()
+                        .to_string();
+                    Ok((result.into_bytes(), &[]))
+                });
 
                 std::io::copy(input, &mut writer)?;
                 Ok(())
