@@ -12,9 +12,15 @@ fn main() {
 
     // TODO: eliminate unwrap
 
-    let commands = executor::parser::parse_command(&mut tokenizer).unwrap();
+    let commands = executor::parser::parse_command(&mut tokenizer).unwrap_or_else(|err| {
+        eprintln!("Error when parsing command: {}", err);
+        std::process::exit(1)
+    });
 
-    executor::execute(commands, codecs).unwrap();
+    executor::execute(commands, codecs).unwrap_or_else(|err| {
+        eprintln!("Error in executing: {}", err);
+        std::process::exit(1)
+    });
 }
 
 fn load_builtins() -> codecs::CodecMetaInfo {

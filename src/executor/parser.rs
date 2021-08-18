@@ -1,6 +1,6 @@
 use crate::executor::commands;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use anyhow::Result;
 
 const OPENING_PARENTHESIS: &str = "[";
 const CLOSING_PARENTHESIS: &str = "]";
@@ -138,7 +138,7 @@ fn parse_text(tokenizer: &mut Tokenizer) -> Result<commands::Text> {
 
     // TODO: allow empty option value
     if str.is_none() {
-        return Err("EOF when parsing".into());
+        anyhow::bail!("EOF when parsing");
     }
 
     let str = str.unwrap().to_string();
@@ -159,7 +159,7 @@ fn parse_text(tokenizer: &mut Tokenizer) -> Result<commands::Text> {
 
         let n = tokenizer.next().unwrap_or_default();
         if n != CLOSING_PARENTHESIS {
-            return Err(format!("expect {}, found {}", CLOSING_PARENTHESIS, n).into());
+            anyhow::bail!("expect {}, found {}", CLOSING_PARENTHESIS, n);
         }
 
         text = commands::Text::Codecs { input, codecs };

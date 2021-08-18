@@ -30,7 +30,7 @@ impl Codec for RepeatCodecs {
         }
 
         // TODO: (prof) consider new with capacity
-        let mut buffer = Vec::<u8>::new();
+        let mut buffer = Vec::<u8>::with_capacity(1024 * 8);
 
         if times > 0 {
             let mut writer = MultiWriter::new(vec![output, &mut buffer]);
