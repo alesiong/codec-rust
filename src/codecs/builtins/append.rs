@@ -14,9 +14,9 @@ impl Codec for AppendCodecs {
         options: &Options,
         output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
-        let value = options.get_text_raw("A").ok_or(anyhow::anyhow!(
-            "append: missing required option append value (-A)",
-        ))?;
+        let value = options
+            .get_text_raw("A")
+            .ok_or_else(|| anyhow::anyhow!("append: missing required option append value (-A)",))?;
 
         let _ = std::io::copy(input, output)?;
         output.write_all(&value)?;

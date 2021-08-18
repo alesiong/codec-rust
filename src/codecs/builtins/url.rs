@@ -10,9 +10,9 @@ pub struct UrlCodec;
 
 impl CodecUsage for UrlCodec {
     fn usage(&self) -> String {
-        return "    url query escape/unescape
+        "    url query escape/unescape
     -p: use path escape instead of query escape"
-            .to_string();
+            .to_string()
     }
 }
 
@@ -64,6 +64,10 @@ impl Codec for UrlCodec {
                 Ok(())
             }
         }
+    }
+
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self as &dyn CodecUsage)
     }
 }
 

@@ -17,7 +17,7 @@ impl Codec for ZlibCodec {
             CodecMode::Encoding => {
                 let level = options
                     .get_text("L")?
-                    .unwrap_or(Compression::default().level());
+                    .unwrap_or_else(|| Compression::default().level());
 
                 let mut writer = flate2::write::ZlibEncoder::new(output, Compression::new(level));
 

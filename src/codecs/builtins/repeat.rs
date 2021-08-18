@@ -43,6 +43,10 @@ impl Codec for RepeatCodecs {
 
         Ok(())
     }
+
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self as &dyn CodecUsage)
+    }
 }
 
 impl CodecUsage for IdCodecs {
@@ -63,5 +67,9 @@ impl Codec for IdCodecs {
         options.insert_text_str("T", 1);
 
         self.0.run_codec(input, global_mode, &options, output)
+    }
+
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self as &dyn CodecUsage)
     }
 }

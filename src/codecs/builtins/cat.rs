@@ -11,9 +11,9 @@ impl Codec for CatCodecs {
         options: &Options,
         output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
-        let input_file = options.get_text::<String>("F")?.ok_or(anyhow::anyhow!(
-            "cat: missing required option input file (-F)",
-        ))?;
+        let input_file = options
+            .get_text::<String>("F")?
+            .ok_or_else(|| anyhow::anyhow!("cat: missing required option input file (-F)"))?;
 
         if !options.get_switch("c") {
             let _ = std::io::copy(input, output)?;

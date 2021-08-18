@@ -60,10 +60,9 @@ impl Codec for RedirectCodecs {
         options: &Options,
         output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
-        let output_file = options.get_text_raw("O").ok_or(anyhow::anyhow!(
-            "redirect: missing required option output file (-O)",
-        ))?;
-
+        let output_file = options.get_text_raw("O").ok_or_else(|| {
+            anyhow::anyhow!("redirect: missing required option output file (-O)",)
+        })?;
         let mut options = Options::new();
         options.insert_switch("c");
         options.insert_text("O", &output_file);

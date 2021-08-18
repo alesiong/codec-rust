@@ -128,7 +128,7 @@ fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
 
     let c = codecs_info
         .lookup(&codec.name)
-        .ok_or(anyhow::anyhow!("codec not found: {}", codec.name))?;
+        .ok_or_else(|| anyhow::anyhow!("codec not found: {}", codec.name))?;
     c.run_codec(&mut input, mode, &options, &mut output)
 }
 

@@ -21,6 +21,10 @@ pub trait Codec {
         options: &Options,
         output: &mut dyn Write,
     ) -> anyhow::Result<()>;
+
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        None
+    }
 }
 
 pub trait CodecUsage {

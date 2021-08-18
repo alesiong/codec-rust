@@ -17,11 +17,15 @@ impl Codec for ConstCodecs {
         options: &Options,
         output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
-        let value = options.get_text_raw("C").ok_or(anyhow::anyhow!(
-            "const: missing required option const value (-C)",
-        ))?;
+        let value = options
+            .get_text_raw("C")
+            .ok_or_else(|| anyhow::anyhow!("const: missing required option const value (-C)"))?;
 
         self.0
             .run_codec(&mut value.as_slice(), global_mode, options, output)
+    }
+
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self as &dyn CodecUsage)
     }
 }

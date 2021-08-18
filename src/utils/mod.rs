@@ -6,7 +6,7 @@ pub struct MultiWriter<'a> {
 
 impl<'a> MultiWriter<'a> {
     pub fn new(writers: Vec<&'a mut dyn std::io::Write>) -> MultiWriter<'a> {
-        MultiWriter { writers: writers }
+        MultiWriter { writers }
     }
 }
 
@@ -52,7 +52,7 @@ where
     {
         BytesToBytesEncoder {
             writer: Some(writer),
-            mapping: mapping,
+            mapping,
             write_buffer: vec![],
         }
     }
@@ -64,7 +64,7 @@ where
     {
         Box::new(WriterDeathRattle {
             writer: self.writer.take().unwrap(),
-            write_buffer: std::mem::replace(&mut self.write_buffer, vec![]),
+            write_buffer: std::mem::take(&mut self.write_buffer),
         })
     }
 }
@@ -114,7 +114,7 @@ where
     M: FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>,
 {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut pre_write_buffer = std::mem::replace(&mut self.write_buffer, vec![]);
+        let mut pre_write_buffer = std::mem::take(&mut self.write_buffer);
 
         pre_write_buffer.extend_from_slice(buf);
 
@@ -150,8 +150,8 @@ where
 {
     pub fn new(reader: &'a mut R, mapping: Box<Mapping<'a>>) -> Self {
         Self {
-            reader: reader,
-            mapping: mapping,
+            reader,
+            mapping,
             write_buffer: vec![],
             remain_buffer: vec![],
             index_remain: 0,
@@ -173,7 +173,7 @@ where
         F: FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>,
     {
         Box::new(ReaderDeathRattle {
-            write_buffer: std::mem::replace(&mut self.write_buffer, vec![]),
+            write_buffer: std::mem::take(&mut self.write_buffer),
         })
     }
 
@@ -238,13 +238,13 @@ where
             return Ok(0);
         }
 
-        let mut pre_write_buffer = std::mem::replace(&mut self.write_buffer, vec![]);
+        let mut pre_write_buffer = std::mem::take(&mut self.write_buffer);
         pre_write_buffer.extend_from_slice(&self.buffer[..n]);
 
         let (result, remain) = (&mut self.mapping)(&pre_write_buffer)?;
         self.write_buffer.extend_from_slice(remain);
 
-        if result.len() == 0 {
+        if result.is_empty() {
             return Err(Error::new(
                 ErrorKind::Interrupted,
                 "no enough bytes to write",
@@ -256,8 +256,4 @@ where
 
         Ok(n)
     }
-}
-
-pub fn replace_with_default<T: Default>(dest: &mut T) -> T {
-    std::mem::replace(dest, T::default())
 }

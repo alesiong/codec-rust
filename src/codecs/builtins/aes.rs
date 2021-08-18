@@ -49,11 +49,11 @@ impl Codec for AesCodec {
     ) -> anyhow::Result<()> {
         let key = options
             .get_text_raw("K")
-            .ok_or(anyhow::anyhow!("aes: missing required option key (-K)"))?;
+            .ok_or_else(|| anyhow::anyhow!("aes: missing required option key (-K)"))?;
         let iv = match self.mode {
-            AesMode::Cbc => options.get_text_raw("IV").ok_or(anyhow::anyhow!(
-                "aes[cbc]: missing required option iv (-IV)",
-            ))?,
+            AesMode::Cbc => options
+                .get_text_raw("IV")
+                .ok_or_else(|| anyhow::anyhow!("aes[cbc]: missing required option iv (-IV)"))?,
             AesMode::Ecb => Default::default(),
         };
 
@@ -108,6 +108,10 @@ impl Codec for AesCodec {
             },
             _ => anyhow::bail!("invalid key length: {}bit", key.len() * 8),
         }
+    }
+
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self as &dyn CodecUsage)
     }
 }
 

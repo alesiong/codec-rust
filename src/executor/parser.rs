@@ -1,4 +1,4 @@
-use crate::{executor::commands, utils::replace_with_default};
+use crate::executor::commands;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -16,7 +16,7 @@ pub struct Tokenizer {
 impl Tokenizer {
     pub fn new(text: Vec<String>) -> Tokenizer {
         Tokenizer {
-            text: text,
+            text,
             look_next: None,
             current_pos: 0,
             eof: false,
@@ -32,7 +32,7 @@ impl Tokenizer {
             return None;
         }
 
-        let next = replace_with_default(&mut self.text[self.current_pos]);
+        let next = std::mem::take(&mut self.text[self.current_pos]);
         self.current_pos += 1;
 
         if next.starts_with(OPENING_PARENTHESIS) && next != OPENING_PARENTHESIS {
@@ -83,10 +83,7 @@ pub fn parse_command(tokenizer: &mut Tokenizer) -> Result<commands::Command> {
         codecs.push(codec);
     }
 
-    Ok(commands::Command {
-        options: options,
-        codecs: codecs,
-    })
+    Ok(commands::Command { options, codecs })
 }
 
 fn is_special_token(token: &str) -> bool {
@@ -104,10 +101,7 @@ fn parse_codec(tokenizer: &mut Tokenizer) -> Result<Option<commands::Codec>> {
 
     let options = parse_options(tokenizer)?;
 
-    Ok(Some(commands::Codec {
-        name: name,
-        options: options,
-    }))
+    Ok(Some(commands::Codec { name, options }))
 }
 
 fn parse_options(tokenizer: &mut Tokenizer) -> Result<Vec<commands::CommandOption>> {
@@ -168,10 +162,7 @@ fn parse_text(tokenizer: &mut Tokenizer) -> Result<commands::Text> {
             return Err(format!("expect {}, found {}", CLOSING_PARENTHESIS, n).into());
         }
 
-        text = commands::Text::Codecs {
-            input: input,
-            codecs: codecs,
-        };
+        text = commands::Text::Codecs { input, codecs };
     } else {
         text = commands::Text::String(str);
     }
