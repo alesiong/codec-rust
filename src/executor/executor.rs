@@ -153,11 +153,11 @@ fn make_codec_options(
     for o in &codec.options {
         match o {
             commands::CommandOption::Switch(name) => {
-                option.insert_switch(&name);
+                option.insert_switch(name);
             }
             commands::CommandOption::Value { name, text } => match text {
                 commands::Text::String(value) => {
-                    option.insert_text(&name, value.as_bytes());
+                    option.insert_text(name, value.as_bytes());
                 }
                 commands::Text::Codecs { input, codecs } => {
                     let mut buf = Vec::<u8>::new();
@@ -170,7 +170,7 @@ fn make_codec_options(
                         &mut buf,
                     )?;
 
-                    option.insert_text(&name, &buf);
+                    option.insert_text(name, &buf);
                 }
             },
         }

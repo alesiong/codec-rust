@@ -1,4 +1,5 @@
 pub mod builtins;
+pub mod meta;
 
 use std::{
     collections::HashMap,
@@ -103,5 +104,34 @@ impl Options {
         };
 
         Ok(Some(String::from_utf8(text)?.parse()?))
+    }
+}
+
+pub trait MetaCodec {
+    fn run_meta_codec(
+        &self,
+        input: &mut dyn Read,
+        global_mode: CodecMode,
+        options: &Options,
+        codec_meta_info: &CodecMetaInfo,
+        output: &mut dyn Write,
+    ) -> anyhow::Result<()>;
+}
+
+struct MetaCodecWrapper<'a, T> {
+    meta: T,
+    meta_info: &'a CodecMetaInfo,
+}
+
+impl<'a, T: MetaCodec> Codec for MetaCodecWrapper<'a, T> {
+    fn run_codec(
+        &self,
+        input: &mut dyn Read,
+        global_mode: CodecMode,
+        options: &Options,
+        output: &mut dyn Write,
+    ) -> anyhow::Result<()> {
+        self.meta
+            .run_meta_codec(input, global_mode, options, self.meta_info, output)
     }
 }

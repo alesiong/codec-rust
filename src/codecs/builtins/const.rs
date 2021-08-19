@@ -26,6 +26,6 @@ impl Codec for ConstCodecs {
     }
 
     fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
-        Some(self as &dyn CodecUsage)
+        Some(self)
     }
 }

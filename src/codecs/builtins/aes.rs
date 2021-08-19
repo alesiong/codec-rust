@@ -1,5 +1,7 @@
-use block_cipher::generic_array;
-use block_modes::{block_cipher, block_padding};
+use block_modes::{
+    block_padding,
+    cipher::{self, generic_array},
+};
 
 use crate::{
     codecs::{Codec, CodecMode, CodecUsage, Options},
@@ -7,32 +9,46 @@ use crate::{
 };
 
 pub struct AesCodec {
-    mode: AesMode,
+    mode: BlockCipherMode,
+    cipher_type: BlockCipherType,
 }
 
-enum AesMode {
+pub struct Sm4Codec(AesCodec);
+
+enum BlockCipherMode {
     Cbc,
     Ecb,
 }
 
+enum BlockCipherType {
+    Aes,
+    Sm4,
+}
+
 impl AesCodec {
     pub fn new_cbc() -> Box<Self> {
-        Box::new(AesCodec { mode: AesMode::Cbc })
+        Box::new(AesCodec {
+            mode: BlockCipherMode::Cbc,
+            cipher_type: BlockCipherType::Aes,
+        })
     }
 
     pub fn new_ecb() -> Box<Self> {
-        Box::new(AesCodec { mode: AesMode::Ecb })
+        Box::new(AesCodec {
+            mode: BlockCipherMode::Ecb,
+            cipher_type: BlockCipherType::Aes,
+        })
     }
 }
 
 impl CodecUsage for AesCodec {
     fn usage(&self) -> String {
         match self.mode {
-            AesMode::Cbc => "    -K key
+            BlockCipherMode::Cbc => "    -K key
     -IV iv
 "
             .to_string(),
-            AesMode::Ecb => "    -K key
+            BlockCipherMode::Ecb => "    -K key
 "
             .to_string(),
         }
@@ -47,80 +63,154 @@ impl Codec for AesCodec {
         options: &Options,
         output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
-        let key = options
-            .get_text_raw("K")
-            .ok_or_else(|| anyhow::anyhow!("aes: missing required option key (-K)"))?;
+        let key = options.get_text_raw("K").ok_or_else(|| {
+            anyhow::anyhow!(
+                "{}: missing required option key (-K)",
+                self.cipher_type.to_str()
+            )
+        })?;
         let iv = match self.mode {
-            AesMode::Cbc => options
-                .get_text_raw("IV")
-                .ok_or_else(|| anyhow::anyhow!("aes[cbc]: missing required option iv (-IV)"))?,
-            AesMode::Ecb => Default::default(),
+            BlockCipherMode::Cbc => options.get_text_raw("IV").ok_or_else(|| {
+                anyhow::anyhow!(
+                    "{}[cbc]: missing required option iv (-IV)",
+                    self.cipher_type.to_str()
+                )
+            })?,
+            BlockCipherMode::Ecb => Default::default(),
         };
 
-        match key.len() * 8 {
-            128 => match self.mode {
-                AesMode::Cbc => {
-                    let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes128>(&key, &iv)?;
-                    match global_mode {
-                        CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => decrypt(cipher, input, output),
+        match self.cipher_type {
+            BlockCipherType::Aes => match key.len() * 8 {
+                128 => match self.mode {
+                    BlockCipherMode::Cbc => {
+                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes128>(&key, &iv)?;
+                        match global_mode {
+                            CodecMode::Encoding => encrypt(cipher, input, output),
+                            CodecMode::Decoding => decrypt(cipher, input, output),
+                        }
                     }
-                }
-                AesMode::Ecb => {
-                    let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes128>(&key, &iv)?;
-                    match global_mode {
-                        CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => decrypt(cipher, input, output),
+                    BlockCipherMode::Ecb => {
+                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes128>(&key, &iv)?;
+                        match global_mode {
+                            CodecMode::Encoding => encrypt(cipher, input, output),
+                            CodecMode::Decoding => decrypt(cipher, input, output),
+                        }
                     }
-                }
+                },
+                192 => match self.mode {
+                    BlockCipherMode::Cbc => {
+                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes192>(&key, &iv)?;
+                        match global_mode {
+                            CodecMode::Encoding => encrypt(cipher, input, output),
+                            CodecMode::Decoding => decrypt(cipher, input, output),
+                        }
+                    }
+                    BlockCipherMode::Ecb => {
+                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes192>(&key, &iv)?;
+                        match global_mode {
+                            CodecMode::Encoding => encrypt(cipher, input, output),
+                            CodecMode::Decoding => decrypt(cipher, input, output),
+                        }
+                    }
+                },
+                256 => match self.mode {
+                    BlockCipherMode::Cbc => {
+                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes256>(&key, &iv)?;
+                        match global_mode {
+                            CodecMode::Encoding => encrypt(cipher, input, output),
+                            CodecMode::Decoding => decrypt(cipher, input, output),
+                        }
+                    }
+                    BlockCipherMode::Ecb => {
+                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes256>(&key, &iv)?;
+                        match global_mode {
+                            CodecMode::Encoding => encrypt(cipher, input, output),
+                            CodecMode::Decoding => decrypt(cipher, input, output),
+                        }
+                    }
+                },
+                _ => anyhow::bail!("invalid key length: {}bit", key.len() * 8),
             },
-            192 => match self.mode {
-                AesMode::Cbc => {
-                    let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes192>(&key, &iv)?;
-                    match global_mode {
-                        CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => decrypt(cipher, input, output),
+            BlockCipherType::Sm4 => match key.len() * 8 {
+                128 => match self.mode {
+                    BlockCipherMode::Cbc => {
+                        let cipher = new_cipher::<block_modes::Cbc<_, _>, sm4::Sm4>(&key, &iv)?;
+                        match global_mode {
+                            CodecMode::Encoding => encrypt(cipher, input, output),
+                            CodecMode::Decoding => decrypt(cipher, input, output),
+                        }
                     }
-                }
-                AesMode::Ecb => {
-                    let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes192>(&key, &iv)?;
-                    match global_mode {
-                        CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => decrypt(cipher, input, output),
+                    BlockCipherMode::Ecb => {
+                        let cipher = new_cipher::<block_modes::Ecb<_, _>, sm4::Sm4>(&key, &iv)?;
+                        match global_mode {
+                            CodecMode::Encoding => encrypt(cipher, input, output),
+                            CodecMode::Decoding => decrypt(cipher, input, output),
+                        }
                     }
-                }
+                },
+                _ => anyhow::bail!("invalid key length: {}bit", key.len() * 8),
             },
-            256 => match self.mode {
-                AesMode::Cbc => {
-                    let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes256>(&key, &iv)?;
-                    match global_mode {
-                        CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => decrypt(cipher, input, output),
-                    }
-                }
-                AesMode::Ecb => {
-                    let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes256>(&key, &iv)?;
-                    match global_mode {
-                        CodecMode::Encoding => encrypt(cipher, input, output),
-                        CodecMode::Decoding => decrypt(cipher, input, output),
-                    }
-                }
-            },
-            _ => anyhow::bail!("invalid key length: {}bit", key.len() * 8),
         }
     }
 
     fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
-        Some(self as &dyn CodecUsage)
+        Some(self)
+    }
+}
+
+impl Sm4Codec {
+    pub fn new_cbc() -> Box<Self> {
+        Box::new(Sm4Codec(AesCodec {
+            mode: BlockCipherMode::Cbc,
+            cipher_type: BlockCipherType::Sm4,
+        }))
+    }
+
+    pub fn new_ecb() -> Box<Self> {
+        Box::new(Sm4Codec(AesCodec {
+            mode: BlockCipherMode::Ecb,
+            cipher_type: BlockCipherType::Sm4,
+        }))
+    }
+}
+
+impl CodecUsage for Sm4Codec {
+    fn usage(&self) -> String {
+        self.0.usage()
+    }
+}
+
+impl Codec for Sm4Codec {
+    fn run_codec(
+        &self,
+        input: &mut dyn std::io::Read,
+        global_mode: CodecMode,
+        options: &Options,
+        output: &mut dyn std::io::Write,
+    ) -> anyhow::Result<()> {
+        self.0.run_codec(input, global_mode, options, output)
+    }
+
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl BlockCipherType {
+    fn to_str(&self) -> &'static str {
+        match self {
+            BlockCipherType::Aes => "aes",
+            BlockCipherType::Sm4 => "sm4",
+        }
     }
 }
 
 fn new_cipher<M, C>(key: &[u8], iv: &[u8]) -> anyhow::Result<M>
 where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
-    C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
+    C: cipher::BlockCipher + cipher::NewBlockCipher,
 {
-    Ok(M::new_var(key, iv)?)
+    Ok(M::new_from_slices(key, iv)?)
 }
 
 fn encrypt<M, C>(
@@ -130,7 +220,7 @@ fn encrypt<M, C>(
 ) -> anyhow::Result<()>
 where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
-    C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
+    C: cipher::BlockCipher + cipher::NewBlockCipher,
 {
     let block_size = block_size::<C>();
 
@@ -154,7 +244,7 @@ fn decrypt<M, C>(
 ) -> anyhow::Result<()>
 where
     M: 'static + block_modes::BlockMode<C, block_padding::Pkcs7>,
-    C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
+    C: cipher::BlockCipher + cipher::NewBlockCipher,
 {
     let block_size = block_size::<C>();
 
@@ -188,7 +278,7 @@ where
 fn encrypt_blocks<M, C>(cipher: &mut M, mut plaintext_blocks: Vec<u8>) -> Vec<u8>
 where
     M: block_modes::BlockMode<C, block_padding::Pkcs7>,
-    C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
+    C: cipher::BlockCipher + cipher::NewBlockCipher,
 {
     cipher.encrypt_blocks(to_blocks(&mut plaintext_blocks));
     plaintext_blocks
@@ -197,7 +287,7 @@ where
 fn decrypt_blocks<M, C>(cipher: &mut M, mut ciphertext_blocks: Vec<u8>) -> Vec<u8>
 where
     M: block_modes::BlockMode<C, block_padding::Pkcs7>,
-    C: block_cipher::BlockCipher + block_cipher::NewBlockCipher,
+    C: cipher::BlockCipher + cipher::NewBlockCipher,
 {
     cipher.decrypt_blocks(to_blocks(&mut ciphertext_blocks));
     ciphertext_blocks
@@ -221,7 +311,7 @@ where
 
 fn block_size<C>() -> usize
 where
-    C: block_cipher::BlockCipher,
+    C: cipher::BlockCipher,
 {
     <C::BlockSize as generic_array::typenum::Unsigned>::to_usize()
 }
