@@ -1,7 +1,7 @@
 use snailquote::UnescapeError;
 
 use crate::{
-    codecs::{Codec, CodecMode, Options},
+    codecs::{Codec, CodecMode, CodecUsage, Options},
     utils::{BytesToBytesDecoder, BytesToBytesEncoder},
 };
 
@@ -65,6 +65,15 @@ impl Codec for EscapeCodec {
                 Ok(())
             }
         }
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for EscapeCodec {
+    fn usage(&self) -> String {
+        "    escape/unescape with shell-like quoting string escaping sequences\n".to_string()
     }
 }
 

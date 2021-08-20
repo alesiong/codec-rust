@@ -1,5 +1,8 @@
 use crate::{
-    codecs::Codec, codecs::Options, utils::BytesToBytesDecoder, utils::BytesToBytesEncoder,
+    codecs::Codec,
+    codecs::{CodecUsage, Options},
+    utils::BytesToBytesDecoder,
+    utils::BytesToBytesEncoder,
 };
 
 #[derive(Default)]
@@ -58,5 +61,17 @@ impl Codec for HexCodec {
                 Ok(())
             }
         }
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for HexCodec {
+    fn usage(&self) -> String {
+        "    binary to hex encode or inverse
+    -c: use capital hex string (only affects encoding)
+"
+        .to_string()
     }
 }

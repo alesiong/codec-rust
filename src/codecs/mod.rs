@@ -2,11 +2,13 @@ pub mod builtins;
 pub mod meta;
 
 use std::{
-    collections::HashMap,
+    collections::{btree_map::Iter, BTreeMap, HashMap},
     error::Error,
     io::{Read, Write},
     ops::Deref,
 };
+
+use once_cell::sync::OnceCell;
 
 #[derive(Copy, Clone)]
 pub enum CodecMode {
@@ -33,18 +35,35 @@ pub trait CodecUsage {
 }
 
 pub struct CodecMetaInfo {
-    codecs_map: HashMap<String, Box<dyn Codec + Send + Sync>>,
+    codecs_map: BTreeMap<String, Box<dyn Codec + Send + Sync>>,
 }
 
 impl CodecMetaInfo {
     pub fn new() -> CodecMetaInfo {
         CodecMetaInfo {
-            codecs_map: HashMap::new(),
+            codecs_map: BTreeMap::new(),
         }
+    }
+
+    pub fn instance() -> &'static CodecMetaInfo {
+        GLOBAL_CODEC_META_INFO
+            .get()
+            .expect("GLOBAL_CODEC_META_INFO should have been initialized")
+    }
+
+    pub fn set_instance(self) {
+        GLOBAL_CODEC_META_INFO
+            .set(self)
+            .ok()
+            .expect("GLOBAL_CODEC_META_INFO initialized failed");
     }
 
     pub fn register(&mut self, name: &str, codec: Box<dyn Codec + Send + Sync>) {
         self.codecs_map.insert(name.to_string(), codec);
+    }
+
+    pub fn register_meta<T: 'static + MetaCodec + Send + Sync>(&mut self, name: &str, meta: T) {
+        self.register(name, Box::new(MetaCodecWrapper { meta }));
     }
 
     pub fn register_codec<C: 'static + Codec + Default + Send + Sync>(&mut self, name: &str) {
@@ -54,7 +73,13 @@ impl CodecMetaInfo {
     pub fn lookup(&self, name: &str) -> Option<&(dyn Codec + Send + Sync)> {
         self.codecs_map.get(name).map(|v| v.deref())
     }
+
+    pub fn codecs_iter(&self) -> Iter<'_, String, Box<dyn Codec + Send + Sync>> {
+        self.codecs_map.iter()
+    }
 }
+
+static GLOBAL_CODEC_META_INFO: OnceCell<CodecMetaInfo> = OnceCell::new();
 
 pub struct Options {
     options: HashMap<String, Option<Vec<u8>>>,
@@ -118,12 +143,11 @@ pub trait MetaCodec {
     ) -> anyhow::Result<()>;
 }
 
-struct MetaCodecWrapper<'a, T> {
+struct MetaCodecWrapper<T: ?Sized> {
     meta: T,
-    meta_info: &'a CodecMetaInfo,
 }
 
-impl<'a, T: MetaCodec> Codec for MetaCodecWrapper<'a, T> {
+impl<'a, 'i: 'a, T: MetaCodec + ?Sized> Codec for MetaCodecWrapper<T> {
     fn run_codec(
         &self,
         input: &mut dyn Read,
@@ -131,7 +155,12 @@ impl<'a, T: MetaCodec> Codec for MetaCodecWrapper<'a, T> {
         options: &Options,
         output: &mut dyn Write,
     ) -> anyhow::Result<()> {
-        self.meta
-            .run_meta_codec(input, global_mode, options, self.meta_info, output)
+        self.meta.run_meta_codec(
+            input,
+            global_mode,
+            options,
+            CodecMetaInfo::instance(),
+            output,
+        )
     }
 }

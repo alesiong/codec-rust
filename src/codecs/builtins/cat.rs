@@ -1,4 +1,4 @@
-use crate::codecs::{Codec, Options};
+use crate::codecs::{Codec, CodecUsage, Options};
 
 #[derive(Default)]
 pub struct CatCodecs;
@@ -23,5 +23,18 @@ impl Codec for CatCodecs {
         let _ = std::io::copy(&mut file, output)?;
 
         Ok(())
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for CatCodecs {
+    fn usage(&self) -> String {
+        "    (if with no argument, behave like `id`)
+    -c: (close input) do not read from input
+    -F file: also read from `file`, optional
+"
+        .to_string()
     }
 }

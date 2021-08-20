@@ -1,4 +1,4 @@
-use crate::codecs::{Codec, Options};
+use crate::codecs::{Codec, CodecUsage, Options};
 
 #[derive(Default)]
 pub struct AppendCodecs;
@@ -22,6 +22,15 @@ impl Codec for AppendCodecs {
         output.write_all(&value)?;
         Ok(())
     }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for AppendCodecs {
+    fn usage(&self) -> String {
+        "    -A string: pass input to output, and then append `string`\n".to_string()
+    }
 }
 
 impl Codec for NewLineCodecs {
@@ -36,5 +45,17 @@ impl Codec for NewLineCodecs {
         options.insert_text("A", b"\n");
 
         self.0.run_codec(input, global_mode, &options, output)
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for NewLineCodecs {
+    fn usage(&self) -> String {
+        "    (= append -A ['\\n' escape -d])
+    append new line
+"
+        .to_string()
     }
 }

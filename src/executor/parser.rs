@@ -5,7 +5,8 @@ use anyhow::Result;
 const OPENING_PARENTHESIS: &str = "[";
 const CLOSING_PARENTHESIS: &str = "]";
 const OPTION_PREFIX: &str = "-";
-
+// TODO: bug parser [ 'a [d]' hex]
+// TODO: check trailing
 pub struct Tokenizer {
     look_next: Option<String>,
     text: Vec<String>,

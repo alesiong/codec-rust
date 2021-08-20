@@ -2,10 +2,11 @@ mod codecs;
 mod executor;
 mod utils;
 
-use codecs::builtins::*;
+use codecs::{builtins::*, meta::UsageMetaCodec, CodecMetaInfo};
 
 fn main() {
     let codecs = load_builtins();
+    CodecMetaInfo::set_instance(codecs);
 
     let args: Vec<_> = std::env::args().skip(1).collect();
     let mut tokenizer = executor::parser::Tokenizer::new(args);
@@ -17,7 +18,7 @@ fn main() {
         std::process::exit(1)
     });
 
-    executor::execute(commands, codecs).unwrap_or_else(|err| {
+    executor::execute(commands).unwrap_or_else(|err| {
         eprintln!("Error in executing: {}", err);
         std::process::exit(1)
     });
@@ -49,5 +50,6 @@ fn load_builtins() -> codecs::CodecMetaInfo {
     meta_info.register_codec::<ZlibCodec>("zlib");
     meta_info.register_codec::<EscapeCodec>("escape");
 
+    meta_info.register_meta("usage", UsageMetaCodec::default());
     meta_info
 }

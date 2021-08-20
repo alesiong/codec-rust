@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use crate::codecs::{Codec, Options};
+use crate::codecs::{Codec, CodecUsage, Options};
 
 #[derive(Default)]
 pub struct DropCodecs;
@@ -20,5 +20,14 @@ impl Codec for DropCodecs {
         std::io::copy(input, output)?;
 
         Ok(())
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for DropCodecs {
+    fn usage(&self) -> String {
+        "    -B count: drop at most first `count` bytes from input\n".to_string()
     }
 }

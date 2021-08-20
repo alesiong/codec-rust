@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use crate::codecs::{Codec, Options};
+use crate::codecs::{Codec, CodecUsage, Options};
 
 #[derive(Default)]
 pub struct TakeCodecs;
@@ -18,5 +18,14 @@ impl Codec for TakeCodecs {
         std::io::copy(&mut input.take(drop_bytes), output)?;
 
         Ok(())
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for TakeCodecs {
+    fn usage(&self) -> String {
+        "    -B count: take up to first `count` bytes from input\n".to_string()
     }
 }

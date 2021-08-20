@@ -1,4 +1,8 @@
-use crate::{codecs::Codec, codecs::Options, utils::MultiWriter};
+use crate::{
+    codecs::Codec,
+    codecs::{CodecUsage, Options},
+    utils::MultiWriter,
+};
 
 #[derive(Default)]
 pub struct TeeCodecs;
@@ -29,6 +33,19 @@ impl Codec for TeeCodecs {
 
         Ok(())
     }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for TeeCodecs {
+    fn usage(&self) -> String {
+        "    (if with no argument, behave like `id`)
+    -c: (close output) do not write to output
+    -O file: also write to `file`, optional
+"
+        .to_string()
+    }
 }
 
 #[derive(Default)]
@@ -46,6 +63,23 @@ impl Codec for SinkCodecs {
         options.insert_switch("c");
 
         self.0.run_codec(input, global_mode, &options, output)
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for SinkCodecs {
+    fn usage(&self) -> String {
+        "    (= tee -c or redirect -O /dev/null on unix-like systems)
+    differences with repeat: repeat without arguments (=repeat -T 0) will end the
+    execution of the whole chain immediately, e.g.:
+    const -C example tee -O /dev/stdout sink
+        will output example
+    const -C example tee -O /dev/stdout repeat
+        will output nothing
+"
+        .to_string()
     }
 }
 
@@ -68,5 +102,17 @@ impl Codec for RedirectCodecs {
         options.insert_text("O", &output_file);
 
         self.0.run_codec(input, global_mode, &options, output)
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for RedirectCodecs {
+    fn usage(&self) -> String {
+        "    = tee -c -O `file`
+    -O file: redirect output to `file`
+"
+        .to_string()
     }
 }

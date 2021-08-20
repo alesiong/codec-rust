@@ -1,6 +1,6 @@
 use flate2::Compression;
 
-use crate::codecs::{Codec, CodecMode, Options};
+use crate::codecs::{Codec, CodecMode, CodecUsage, Options};
 
 #[derive(Default)]
 pub struct ZlibCodec;
@@ -33,5 +33,14 @@ impl Codec for ZlibCodec {
                 Ok(())
             }
         }
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for ZlibCodec {
+    fn usage(&self) -> String {
+        "    -L level: compress level (int, [-2, 9], default -1)\n".to_string()
     }
 }

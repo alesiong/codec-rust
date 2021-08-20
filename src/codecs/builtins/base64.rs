@@ -1,4 +1,4 @@
-use crate::codecs::{Codec, Options};
+use crate::codecs::{Codec, CodecUsage, Options};
 
 #[derive(Default)]
 pub struct Base64Codec;
@@ -38,5 +38,15 @@ impl Codec for Base64Codec {
                 Ok(())
             }
         }
+    }
+
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for Base64Codec {
+    fn usage(&self) -> String {
+        "    -u: use url base64 instead\n".to_string()
     }
 }

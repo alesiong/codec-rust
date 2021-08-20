@@ -1,12 +1,14 @@
 use std::{
     io::{Read, Write},
     ops::DerefMut,
-    sync::Arc,
 };
 
 use anyhow::Result;
 
-use crate::{codecs, executor::commands};
+use crate::{
+    codecs::{self, CodecMetaInfo},
+    executor::commands,
+};
 
 #[allow(unused)]
 const OPTION_ENCODING: &str = "e";
@@ -17,16 +19,24 @@ const OPTION_INPUT_FILE: &str = "F";
 const OPTION_OUTPUT_FILE: &str = "O";
 const OPTION_HELP: &str = "h";
 
-pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInfo) -> Result<()> {
+pub fn execute(mut command: commands::Command) -> Result<()> {
     let mut global_mode = codecs::CodecMode::Encoding;
     for o in &command.options {
         match o {
             commands::CommandOption::Switch(name) => match name.as_ref() {
+                OPTION_ENCODING => global_mode = codecs::CodecMode::Encoding,
                 OPTION_DECODING => global_mode = codecs::CodecMode::Decoding,
                 OPTION_NEW_LINE => command.codecs.push(commands::Codec {
                     name: "newline".to_string(),
                     options: vec![],
                 }),
+                OPTION_HELP => {
+                    let codec = commands::Codec {
+                        name: "usage".to_string(),
+                        options: vec![],
+                    };
+                    command.codecs = vec![codec];
+                }
                 _ => {
                     anyhow::bail!("unknown option: {}", name);
                 }
@@ -67,6 +77,7 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
                     };
                     command.codecs.push(codec);
                 }
+
                 _ => {
                     anyhow::bail!("unknown option: {}", name);
                 }
@@ -77,7 +88,6 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
     run_codecs(
         Box::new(std::io::stdin()),
         command.codecs,
-        Arc::new(codecs_info),
         global_mode,
         &mut std::io::stdout(),
     )
@@ -86,7 +96,6 @@ pub fn execute(mut command: commands::Command, codecs_info: codecs::CodecMetaInf
 fn run_codecs<R: 'static + Read + ?Sized + Send, W: Write + ?Sized>(
     input: Box<R>,
     codec_list: Vec<commands::Codec>,
-    codecs_info: Arc<codecs::CodecMetaInfo>,
     mode: codecs::CodecMode,
     output: &mut W,
 ) -> Result<()> {
@@ -95,13 +104,12 @@ fn run_codecs<R: 'static + Read + ?Sized + Send, W: Write + ?Sized>(
     for c in codec_list {
         // TODO: (prof) PipeReader::BufRead::fill_buf, PipeWriter::Write::write use lots of tiny vec
         let (reader, mut writer) = pipe::pipe();
-        let codecs_info = Arc::clone(&codecs_info);
 
         std::thread::Builder::new()
             .name(c.name.clone())
             .spawn(move || {
                 || -> Result<()> {
-                    run_codec(&mut previous_input, &c, codecs_info, mode, &mut writer)?;
+                    run_codec(&mut previous_input, &c, mode, &mut writer)?;
                     writer.flush()?;
                     Ok(())
                 }()
@@ -125,11 +133,11 @@ fn run_codecs<R: 'static + Read + ?Sized + Send, W: Write + ?Sized>(
 fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
     mut input: &mut R,
     codec: &commands::Codec,
-    codecs_info: Arc<codecs::CodecMetaInfo>,
     mut mode: codecs::CodecMode,
     mut output: &mut W,
 ) -> Result<()> {
-    let options = make_codec_options(codec, Arc::clone(&codecs_info))?;
+    let codecs_info = CodecMetaInfo::instance();
+    let options = make_codec_options(codec)?;
 
     if options.get_switch("e") {
         mode = codecs::CodecMode::Encoding;
@@ -144,10 +152,7 @@ fn run_codec<R: Read + ?Sized, W: Write + ?Sized>(
     c.run_codec(&mut input, mode, &options, &mut output)
 }
 
-fn make_codec_options(
-    codec: &commands::Codec,
-    codecs_info: Arc<codecs::CodecMetaInfo>,
-) -> Result<codecs::Options> {
+fn make_codec_options(codec: &commands::Codec) -> Result<codecs::Options> {
     let mut option = codecs::Options::new();
 
     for o in &codec.options {
@@ -165,7 +170,6 @@ fn make_codec_options(
                     run_codecs(
                         Box::new(std::io::Cursor::new(input.clone())),
                         codecs.clone(),
-                        Arc::clone(&codecs_info),
                         codecs::CodecMode::Encoding,
                         &mut buf,
                     )?;

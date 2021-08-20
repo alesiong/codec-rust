@@ -1,5 +1,5 @@
 use crate::{
-    codecs::{Codec, CodecMode, Options},
+    codecs::{Codec, CodecMode, CodecUsage, Options},
     utils::BytesToBytesEncoder,
 };
 
@@ -51,6 +51,15 @@ impl Codec for HashCodec {
             },
             CodecMode::Decoding => Err(anyhow::anyhow!("hash: cannot decode")),
         }
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for HashCodec {
+    fn usage(&self) -> String {
+        "    calculate hash digest\n".to_string()
     }
 }
 
