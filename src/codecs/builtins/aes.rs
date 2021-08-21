@@ -83,14 +83,14 @@ impl Codec for AesCodec {
             BlockCipherType::Aes => match key.len() * 8 {
                 128 => match self.mode {
                     BlockCipherMode::Cbc => {
-                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes128>(&key, &iv)?;
+                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes128>(key, iv)?;
                         match global_mode {
                             CodecMode::Encoding => encrypt(cipher, input, output),
                             CodecMode::Decoding => decrypt(cipher, input, output),
                         }
                     }
                     BlockCipherMode::Ecb => {
-                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes128>(&key, &iv)?;
+                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes128>(key, iv)?;
                         match global_mode {
                             CodecMode::Encoding => encrypt(cipher, input, output),
                             CodecMode::Decoding => decrypt(cipher, input, output),
@@ -99,14 +99,14 @@ impl Codec for AesCodec {
                 },
                 192 => match self.mode {
                     BlockCipherMode::Cbc => {
-                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes192>(&key, &iv)?;
+                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes192>(key, iv)?;
                         match global_mode {
                             CodecMode::Encoding => encrypt(cipher, input, output),
                             CodecMode::Decoding => decrypt(cipher, input, output),
                         }
                     }
                     BlockCipherMode::Ecb => {
-                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes192>(&key, &iv)?;
+                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes192>(key, iv)?;
                         match global_mode {
                             CodecMode::Encoding => encrypt(cipher, input, output),
                             CodecMode::Decoding => decrypt(cipher, input, output),
@@ -115,14 +115,14 @@ impl Codec for AesCodec {
                 },
                 256 => match self.mode {
                     BlockCipherMode::Cbc => {
-                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes256>(&key, &iv)?;
+                        let cipher = new_cipher::<block_modes::Cbc<_, _>, aes::Aes256>(key, iv)?;
                         match global_mode {
                             CodecMode::Encoding => encrypt(cipher, input, output),
                             CodecMode::Decoding => decrypt(cipher, input, output),
                         }
                     }
                     BlockCipherMode::Ecb => {
-                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes256>(&key, &iv)?;
+                        let cipher = new_cipher::<block_modes::Ecb<_, _>, aes::Aes256>(key, iv)?;
                         match global_mode {
                             CodecMode::Encoding => encrypt(cipher, input, output),
                             CodecMode::Decoding => decrypt(cipher, input, output),
@@ -134,14 +134,14 @@ impl Codec for AesCodec {
             BlockCipherType::Sm4 => match key.len() * 8 {
                 128 => match self.mode {
                     BlockCipherMode::Cbc => {
-                        let cipher = new_cipher::<block_modes::Cbc<_, _>, sm4::Sm4>(&key, &iv)?;
+                        let cipher = new_cipher::<block_modes::Cbc<_, _>, sm4::Sm4>(key, iv)?;
                         match global_mode {
                             CodecMode::Encoding => encrypt(cipher, input, output),
                             CodecMode::Decoding => decrypt(cipher, input, output),
                         }
                     }
                     BlockCipherMode::Ecb => {
-                        let cipher = new_cipher::<block_modes::Ecb<_, _>, sm4::Sm4>(&key, &iv)?;
+                        let cipher = new_cipher::<block_modes::Ecb<_, _>, sm4::Sm4>(key, iv)?;
                         match global_mode {
                             CodecMode::Encoding => encrypt(cipher, input, output),
                             CodecMode::Decoding => decrypt(cipher, input, output),

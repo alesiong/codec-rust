@@ -19,7 +19,7 @@ impl Codec for AppendCodecs {
             .ok_or_else(|| anyhow::anyhow!("append: missing required option append value (-A)",))?;
 
         let _ = std::io::copy(input, output)?;
-        output.write_all(&value)?;
+        output.write_all(value)?;
         Ok(())
     }
     fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {

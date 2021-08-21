@@ -50,6 +50,7 @@ fn load_builtins() -> codecs::CodecMetaInfo {
     meta_info.register_codec::<ZlibCodec>("zlib");
     meta_info.register_codec::<EscapeCodec>("escape");
     meta_info.register_codec::<RsaCryptCodec>("rsa-crypt");
+    meta_info.register_codec::<RsaSignCodec>("rsa-sign");
 
     meta_info.register_meta("usage", UsageMetaCodec::default());
     meta_info

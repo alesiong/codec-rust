@@ -99,7 +99,7 @@ impl Codec for RedirectCodecs {
         })?;
         let mut options = Options::new();
         options.insert_switch("c");
-        options.insert_text("O", &output_file);
+        options.insert_text("O", output_file);
 
         self.0.run_codec(input, global_mode, &options, output)
     }
