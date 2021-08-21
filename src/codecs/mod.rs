@@ -93,7 +93,7 @@ impl Options {
     }
 
     pub fn insert_switch(&mut self, name: &str) {
-        debug_assert!(name.chars().next().unwrap().is_lowercase());
+        debug_assert!(!name.chars().next().unwrap().is_uppercase());
         self.options.insert(name.to_string(), None);
     }
 
@@ -107,13 +107,20 @@ impl Options {
     }
 
     pub fn get_switch(&self, name: &str) -> bool {
-        debug_assert!(name.chars().next().unwrap().is_lowercase());
+        debug_assert!(!name.chars().next().unwrap().is_uppercase());
         self.options.contains_key(name)
     }
 
-    pub fn get_text_raw(&self, name: &str) -> Option<Vec<u8>> {
+    pub fn get_text_raw(&self, name: &str) -> Option<&[u8]> {
         debug_assert!(name.chars().next().unwrap().is_uppercase());
-        Some(self.options.get(name)?.clone().unwrap())
+        Some(self.options.get(name)?.as_ref().unwrap())
+    }
+
+    pub fn get_text_str(&self, name: &str) -> anyhow::Result<Option<&str>> {
+        Ok(self
+            .get_text_raw(name)
+            .map(std::str::from_utf8)
+            .transpose()?)
     }
 
     pub fn get_text<T>(&self, name: &str) -> anyhow::Result<Option<T>>
@@ -121,14 +128,7 @@ impl Options {
         T: std::str::FromStr,
         <T as std::str::FromStr>::Err: 'static + Error + Sync + Send,
     {
-        debug_assert!(name.chars().next().unwrap().is_uppercase());
-
-        let text = match self.get_text_raw(name) {
-            Some(text) => text,
-            None => return Ok(None),
-        };
-
-        Ok(Some(String::from_utf8(text)?.parse()?))
+        Ok(self.get_text_str(name)?.map(str::parse).transpose()?)
     }
 }
 

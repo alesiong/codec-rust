@@ -117,7 +117,9 @@ dependencies = [
  "once_cell",
  "percent-encoding",
  "pipe",
+ "rand",
  "rsa",
+ "sha-1",
  "sha2",
  "sm3",
  "sm4",
@@ -483,6 +485,19 @@ dependencies = [
  "rand",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "sha-1"
+version = "0.9.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a0c8611594e2ab4ebbf06ec7cbbf0a99450b8570e96cbf5188b5d5f6ef18d81"
+dependencies = [
+ "block-buffer",
+ "cfg-if 1.0.0",
+ "cpufeatures",
+ "digest",
+ "opaque-debug",
 ]
 
 [[package]]

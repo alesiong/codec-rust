@@ -29,7 +29,6 @@ impl Codec for RepeatCodecs {
             anyhow::bail!("repeat: times cannot be minus");
         }
 
-        // TODO: (prof) consider new with capacity
         let mut buffer = Vec::<u8>::with_capacity(1024 * 8);
 
         if times > 0 {

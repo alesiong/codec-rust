@@ -12,6 +12,7 @@ impl Codec for Base64Codec {
         mut output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
         let no_padding = options.get_switch("p");
+        #[allow(clippy::collapsible_else_if)]
         let encoding = if options.get_switch("u") {
             if no_padding {
                 base64::URL_SAFE_NO_PAD
@@ -25,6 +26,7 @@ impl Codec for Base64Codec {
                 base64::STANDARD
             }
         };
+        #[warn(clippy::collapsible_else_if)]
 
         match global_mode {
             crate::codecs::CodecMode::Encoding => {
