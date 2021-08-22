@@ -47,10 +47,16 @@ fn load_builtins() -> codecs::CodecMetaInfo {
     meta_info.register("sha256", HashCodec::new_sha256());
     meta_info.register("sm3", HashCodec::new_sm3());
     meta_info.register_codec::<UrlCodec>("url");
+    #[cfg(feature = "libc")]
     meta_info.register_codec::<ZlibCodec>("zlib");
     meta_info.register_codec::<EscapeCodec>("escape");
+    #[cfg(feature = "libc")]
     meta_info.register_codec::<RsaCryptCodec>("rsa-crypt");
+    #[cfg(feature = "libc")]
     meta_info.register_codec::<RsaSignCodec>("rsa-sign");
+
+    #[cfg(feature = "system")]
+    meta_info.register_codec::<SystemCodec>("system");
 
     meta_info.register_meta("usage", UsageMetaCodec::default());
     meta_info

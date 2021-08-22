@@ -132,3 +132,4 @@ take
 3. usage
 4. codec aliases/scripts (implement it as super-meta codec)
 5. new codecs: i.e. if, system
+6. plugins
