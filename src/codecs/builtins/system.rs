@@ -5,7 +5,7 @@ use tokio::{
     process::Command,
 };
 
-use crate::codecs::Codec;
+use crate::codecs::{Codec, CodecUsage};
 
 #[derive(Default)]
 pub struct SystemCodec;
@@ -77,6 +77,18 @@ impl Codec for SystemCodec {
         }
 
         Ok(())
+    }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for SystemCodec {
+    fn usage(&self) -> String {
+        "   execute command, pipe its stdin as input, stdout as output
+    -C command: command to run
+    -A args: args for command
+".to_string()
     }
 }
 

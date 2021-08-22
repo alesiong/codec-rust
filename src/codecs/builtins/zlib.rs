@@ -41,6 +41,6 @@ impl Codec for ZlibCodec {
 
 impl CodecUsage for ZlibCodec {
     fn usage(&self) -> String {
-        "    -L level: compress level (int, [-2, 9], default -1)\n".to_string()
+        "    -L level: compress level (int, [0, 9], default 6)\n".to_string()
     }
 }

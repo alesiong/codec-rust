@@ -1,7 +1,7 @@
 use rand::rngs::OsRng;
 use rsa::{PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey};
 
-use crate::codecs::Codec;
+use crate::codecs::{Codec, CodecUsage};
 
 #[derive(Default)]
 pub struct RsaCryptCodec;
@@ -46,6 +46,22 @@ impl Codec for RsaCryptCodec {
 
         Ok(())
     }
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for RsaCryptCodec {
+    fn usage(&self) -> String {
+        "    rsa encryption with public key and decryption with private key
+    -PK pub_key: public key pem string, default pkcs1 format
+    -SK pri_key: private key pem string, default pkcs1 format
+    -8: use pkcs8 key format instead of pkcs1
+    -PS scheme: padding scheme (oaep, pkcs15; defaults to oaep)
+    -H algorithm: hash algorithm used for oaep padding scheme (sha1, sha256; defaults to sha256)
+"
+        .to_string()
+    }
 }
 
 impl Codec for RsaSignCodec {
@@ -89,6 +105,25 @@ impl Codec for RsaSignCodec {
         }
 
         Ok(())
+    }
+   fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+        Some(self)
+    }
+}
+
+impl CodecUsage for RsaSignCodec {
+    fn usage(&self) -> String {
+        "    rsa sign with private key and verification with public key
+    NOTE:
+        1. input must first be hashed in algorithm specified in -H option
+            e.g. sha256 rsa-sign -SK sk_string -H sha256
+        2. for verification, output nothing if succeeded, error if not (pending to change along with new `if` meta codec)
+    -PK pub_key: public key pem string, default pkcs1 format
+    -SK pri_key: private key pem string, default pkcs1 format
+    -8: use pkcs8 key format instead of pkcs1
+    -H algorithm: hash algorithm used for sign (sha1, sha256)
+"
+        .to_string()
     }
 }
 
