@@ -146,11 +146,9 @@ fn parse_text(tokenizer: &mut Tokenizer) -> Result<commands::Text> {
 
     tokenizer.next();
 
-    let text: commands::Text;
-
     // TODO: escape parenthesis
     // TODO: allow empty sub-codecs syntax
-    if str == OPENING_PARENTHESIS {
+    let text = if str == OPENING_PARENTHESIS {
         let input = tokenizer.next().unwrap_or_default();
         let mut codecs = vec![];
 
@@ -163,10 +161,10 @@ fn parse_text(tokenizer: &mut Tokenizer) -> Result<commands::Text> {
             anyhow::bail!("expect {}, found {}", CLOSING_PARENTHESIS, n);
         }
 
-        text = commands::Text::Codecs { input, codecs };
+        commands::Text::Codecs { input, codecs }
     } else {
-        text = commands::Text::String(str);
-    }
+        commands::Text::String(str)
+    };
 
     Ok(text)
 }

@@ -58,6 +58,6 @@ fn load_builtins() -> codecs::CodecMetaInfo {
     #[cfg(feature = "system")]
     meta_info.register_codec::<SystemCodec>("system");
 
-    meta_info.register_meta("usage", UsageMetaCodec::default());
+    meta_info.register_meta("usage", UsageMetaCodec);
     meta_info
 }

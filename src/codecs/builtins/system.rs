@@ -1,3 +1,4 @@
+use std::mem::MaybeUninit;
 use std::{io::ErrorKind, process::Stdio};
 
 use tokio::{
@@ -63,16 +64,16 @@ impl Codec for SystemCodec {
                 let write_handle = async {
                     let _ = tokio::io::copy(&mut stdout, &mut output).await?;
                     drop(stdout);
-                    anyhow::Result::<_>::Ok(())
+                    Ok(())
                 };
 
                 let child_handle = async {
                     let _ = child.wait().await?;
-                    anyhow::Result::<_>::Ok(())
+                    Ok(())
                 };
 
                 tokio::try_join!(write_handle, read_handle, child_handle)?;
-                anyhow::Result::<_>::Ok(())
+                Ok::<_, anyhow::Error>(())
             })?;
         }
 
@@ -88,7 +89,8 @@ impl CodecUsage for SystemCodec {
         "   execute command, pipe its stdin as input, stdout as output
     -C command: command to run
     -A args: args for command
-".to_string()
+"
+        .to_string()
     }
 }
 
@@ -106,8 +108,9 @@ impl AsyncRead for AsyncReadWrapper<'_> {
         _cx: &mut std::task::Context<'_>,
         buf: &mut tokio::io::ReadBuf<'_>,
     ) -> std::task::Poll<std::io::Result<()>> {
-        // TODO: maybe use uninitialized
-        match self.get_mut().0.read(buf.initialize_unfilled()) {
+        // SAFETY: read never touches uninit part
+        let unfilled = unsafe { &mut *(buf.unfilled_mut() as *mut [MaybeUninit<u8>] as *mut [u8]) };
+        match self.get_mut().0.read(unfilled) {
             Ok(0) => std::task::Poll::Ready(Ok(())),
             Ok(len) => {
                 buf.advance(len);
@@ -128,7 +131,7 @@ struct AsyncWriteWrapper<'a>(&'a mut dyn std::io::Write);
 //     }
 // }
 
-impl<'a> AsyncWrite for AsyncWriteWrapper<'_> {
+impl AsyncWrite for AsyncWriteWrapper<'_> {
     fn poll_write(
         mut self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
