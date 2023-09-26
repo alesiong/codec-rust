@@ -100,7 +100,7 @@ struct AsyncReadWrapper<'a>(&'a mut dyn std::io::Read);
 //     }
 // }
 
-impl<'a> AsyncRead for AsyncReadWrapper<'_> {
+impl AsyncRead for AsyncReadWrapper<'_> {
     fn poll_read(
         self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,

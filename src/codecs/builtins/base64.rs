@@ -13,17 +13,17 @@ impl Codec for Base64Codec {
     ) -> anyhow::Result<()> {
         let no_padding = options.get_switch("p");
         #[allow(clippy::collapsible_else_if)]
-        let encoding = if options.get_switch("u") {
+            let encoding = &if options.get_switch("u") {
             if no_padding {
-                base64::URL_SAFE_NO_PAD
+                base64::engine::general_purpose::URL_SAFE_NO_PAD
             } else {
-                base64::URL_SAFE
+                base64::engine::general_purpose::URL_SAFE
             }
         } else {
             if no_padding {
-                base64::STANDARD_NO_PAD
+                base64::engine::general_purpose::STANDARD_NO_PAD
             } else {
-                base64::STANDARD
+                base64::engine::general_purpose::STANDARD
             }
         };
         #[warn(clippy::collapsible_else_if)]

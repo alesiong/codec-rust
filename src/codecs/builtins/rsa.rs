@@ -1,5 +1,8 @@
 use rand::rngs::OsRng;
-use rsa::{PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey};
+use rsa::{Oaep, pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey}, Pkcs1v15Encrypt, Pkcs1v15Sign, pkcs8::{DecodePrivateKey, DecodePublicKey}, RsaPrivateKey, RsaPublicKey};
+use rsa::rand_core::CryptoRngCore;
+use rsa::traits::PaddingScheme;
+
 
 use crate::codecs::{Codec, CodecUsage};
 
@@ -60,7 +63,7 @@ impl CodecUsage for RsaCryptCodec {
     -PS scheme: padding scheme (oaep, pkcs15; defaults to oaep)
     -H algorithm: hash algorithm used for oaep padding scheme (sha1, sha256; defaults to sha256)
 "
-        .to_string()
+            .to_string()
     }
 }
 
@@ -73,15 +76,15 @@ impl Codec for RsaSignCodec {
         output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
         let mut buffer = Vec::<u8>::with_capacity(1024 * 8);
-        let hash = options
+        let padding = options
             .get_text_str("H")?
             .map(|hash| match hash {
-                "sha1" => Ok(rsa::Hash::SHA1),
-                "sha256" => Ok(rsa::Hash::SHA2_256),
+                "sha1" => Ok(Pkcs1v15Sign::new::<sha1::Sha1>()),
+                "sha256" => Ok(Pkcs1v15Sign::new::<sha2::Sha256>()),
                 _ => anyhow::bail!("invalid hash type: {}", hash),
             })
-            .transpose()?;
-        let padding = PaddingScheme::new_pkcs1v15_sign(hash);
+            .transpose()?
+            .unwrap_or_else(|| Pkcs1v15Sign::new_unprefixed());
 
         match global_mode {
             crate::codecs::CodecMode::Encoding => {
@@ -106,7 +109,7 @@ impl Codec for RsaSignCodec {
 
         Ok(())
     }
-   fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
+    fn as_codec_usage(&self) -> Option<&dyn CodecUsage> {
         Some(self)
     }
 }
@@ -123,7 +126,7 @@ impl CodecUsage for RsaSignCodec {
     -8: use pkcs8 key format instead of pkcs1
     -H algorithm: hash algorithm used for sign (sha1, sha256)
 "
-        .to_string()
+            .to_string()
     }
 }
 
@@ -145,8 +148,8 @@ fn get_pub_key(options: &crate::codecs::Options) -> anyhow::Result<RsaPublicKey>
         .get_text("PK")?
         .ok_or_else(|| anyhow::anyhow!("rsa: missing required option public key (-PK)"))?;
     let key = match get_key_type(options) {
-        KeyType::Pkcs1 => rsa::pkcs1::FromRsaPublicKey::from_pkcs1_pem(&text)?,
-        KeyType::Pkcs8 => rsa::pkcs8::FromPublicKey::from_public_key_pem(&text)?,
+        KeyType::Pkcs1 => RsaPublicKey::from_pkcs1_pem(&text)?,
+        KeyType::Pkcs8 => RsaPublicKey::from_public_key_pem(&text)?,
     };
     Ok(key)
 }
@@ -156,22 +159,46 @@ fn get_pri_key(options: &crate::codecs::Options) -> anyhow::Result<RsaPrivateKey
         .get_text("SK")?
         .ok_or_else(|| anyhow::anyhow!("rsa: missing required option private key (-SK)"))?;
     let key = match get_key_type(options) {
-        KeyType::Pkcs1 => rsa::pkcs1::FromRsaPrivateKey::from_pkcs1_pem(&text)?,
-        KeyType::Pkcs8 => rsa::pkcs8::FromPrivateKey::from_pkcs8_pem(&text)?,
+        KeyType::Pkcs1 => RsaPrivateKey::from_pkcs1_pem(&text)?,
+        KeyType::Pkcs8 => RsaPrivateKey::from_pkcs8_pem(&text)?,
     };
     Ok(key)
 }
 
-fn get_padding_scheme(padding: &str, hash: &str) -> anyhow::Result<PaddingScheme> {
+fn get_padding_scheme(padding: &str, hash: &str) -> anyhow::Result<OaepOrPkcs15> {
     let scheme = match padding {
-        "oaep" => match hash {
-            "sha1" => PaddingScheme::new_oaep::<sha1::Sha1>(),
-            "sha256" => PaddingScheme::new_oaep::<sha2::Sha256>(),
+        "oaep" => OaepOrPkcs15::Oaep(match hash {
+            "sha1" => Oaep::new::<sha1::Sha1>(),
+            "sha256" => Oaep::new::<sha2::Sha256>(),
             _ => anyhow::bail!("invalid hash type: {}", hash),
-        },
-        "pkcs15" => PaddingScheme::new_pkcs1v15_encrypt(),
+        }),
+        "pkcs15" => OaepOrPkcs15::Pkcs15(Pkcs1v15Encrypt),
 
         _ => anyhow::bail!("invalid padding scheme: {}", padding),
     };
     Ok(scheme)
 }
+
+
+#[enum_delegate::implement(PaddingScheme,
+trait PaddingScheme {
+fn decrypt<Rng: CryptoRngCore>(
+self,
+rng: Option<&mut Rng>,
+priv_key: &RsaPrivateKey,
+ciphertext: &[u8],
+) -> rsa::Result<Vec<u8>>;
+
+fn encrypt<Rng: CryptoRngCore>(
+self,
+rng: &mut Rng,
+pub_key: &RsaPublicKey,
+msg: &[u8],
+) -> rsa::Result<Vec<u8>>;
+}
+)]
+enum OaepOrPkcs15 {
+    Oaep(Oaep),
+    Pkcs15(Pkcs1v15Encrypt),
+}
+
