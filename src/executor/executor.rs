@@ -18,6 +18,7 @@ const OPTION_INPUT_STRING: &str = "I";
 const OPTION_INPUT_FILE: &str = "F";
 const OPTION_OUTPUT_FILE: &str = "O";
 const OPTION_HELP: &str = "h";
+const OPTION_HELP_CODEC: &str = "H";
 
 pub fn execute(mut command: commands::Command) -> Result<()> {
     let mut global_mode = codecs::CodecMode::Encoding;
@@ -77,6 +78,16 @@ pub fn execute(mut command: commands::Command) -> Result<()> {
                     };
                     command.codecs.push(codec);
                 }
+                OPTION_HELP_CODEC => {
+                    let codec = commands::Codec {
+                        name: "usage".to_string(),
+                        options: vec![commands::CommandOption::Value {
+                            name: "C".to_string(),
+                            text: text.clone(),
+                        }],
+                    };
+                    command.codecs.push(codec);
+                }
 
                 _ => {
                     anyhow::bail!("unknown option: {}", name);
@@ -113,15 +124,15 @@ fn run_codecs<R: 'static + Read + ?Sized + Send, W: Write + ?Sized>(
                     writer.flush()?;
                     Ok(())
                 })()
-                    .unwrap_or_else(|err| {
-                        if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
-                            if io_err.kind() == std::io::ErrorKind::BrokenPipe {
-                                return;
-                            }
+                .unwrap_or_else(|err| {
+                    if let Some(io_err) = err.downcast_ref::<std::io::Error>() {
+                        if io_err.kind() == std::io::ErrorKind::BrokenPipe {
+                            return;
                         }
-                        eprintln!("Error when executing codec {}: {}", c.name, err);
-                        std::process::exit(1)
-                    });
+                    }
+                    eprintln!("Error when executing codec {}: {}", c.name, err);
+                    std::process::exit(1)
+                });
             })?;
 
         previous_input = Box::new(reader);

@@ -8,17 +8,31 @@ impl MetaCodec for UsageMetaCodec {
         &self,
         _input: &mut dyn std::io::Read,
         _global_mode: crate::codecs::CodecMode,
-        _options: &crate::codecs::Options,
+        options: &crate::codecs::Options,
         codec_meta_info: &crate::codecs::CodecMetaInfo,
         output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
-        writeln!(output, "Available codecs:")?;
+        let codec_name = options.get_text_str("C")?;
 
-        for (name, codec) in codec_meta_info.codecs_iter() {
-            writeln!(output, "{}", name)?;
+        if let Some(codec_name) = codec_name {
+            let codec = codec_meta_info
+                .codecs_map
+                .get(codec_name)
+                .ok_or_else(|| anyhow::anyhow!("codec not found: {}", codec_name))?;
+            writeln!(output, "{}", codec_name)?;
 
             if let Some(usage) = codec.as_codec_usage() {
                 writeln!(output, "{}", usage.usage())?;
+            }
+        } else {
+            writeln!(output, "Available codecs:")?;
+
+            for (name, codec) in codec_meta_info.codecs_iter() {
+                writeln!(output, "{}", name)?;
+
+                if let Some(usage) = codec.as_codec_usage() {
+                    writeln!(output, "{}", usage.usage())?;
+                }
             }
         }
 

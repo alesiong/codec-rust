@@ -17,6 +17,7 @@ options:
     -F file: use content of `file` as input instead of stdin (= insert `cat -c -F` before)
     -O file: use `file` as output instead of stdout (= append `tee -O` after)
     -h: print usage and exit
+    -H codec: print usage for `codec` and exit
 
 codecs:
     a list of **codec**s(en/de-coders), input will be passed and transformed from
@@ -109,6 +110,7 @@ rsa-crypt
     -PK pub_key: public key pem string, default pkcs1 format
     -SK pri_key: private key pem string, default pkcs1 format
     -8: use pkcs8 key format instead of pkcs1
+    -dr: use der format instead of pem
     -PS scheme: padding scheme (oaep, pkcs15; defaults to oaep)
     -H algorithm: hash algorithm used for oaep padding scheme (sha1, sha256; defaults to sha256)
 
@@ -121,6 +123,7 @@ rsa-sign
     -PK pub_key: public key pem string, default pkcs1 format
     -SK pri_key: private key pem string, default pkcs1 format
     -8: use pkcs8 key format instead of pkcs1
+    -dr: use der format instead of pem
     -H algorithm: hash algorithm used for sign (sha1, sha256)
 
 sha256
