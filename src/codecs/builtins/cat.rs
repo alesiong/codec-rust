@@ -11,16 +11,16 @@ impl Codec for CatCodecs {
         options: &Options,
         output: &mut dyn std::io::Write,
     ) -> anyhow::Result<()> {
-        let input_file = options
-            .get_text::<String>("F")?
-            .ok_or_else(|| anyhow::anyhow!("cat: missing required option input file (-F)"))?;
-
         if !options.get_switch("c") {
             let _ = std::io::copy(input, output)?;
         }
 
-        let mut file = std::fs::File::open(input_file)?;
-        let _ = std::io::copy(&mut file, output)?;
+        options
+            .get_text::<String>("F")?
+            .map(std::fs::File::open)
+            .transpose()?
+            .map(|mut file| std::io::copy(&mut file, output))
+            .transpose()?;
 
         Ok(())
     }
@@ -35,6 +35,6 @@ impl CodecUsage for CatCodecs {
     -c: (close input) do not read from input
     -F file: also read from `file`, optional
 "
-        .to_string()
+            .to_string()
     }
 }
