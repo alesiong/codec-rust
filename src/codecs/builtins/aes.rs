@@ -1,4 +1,5 @@
 use std::io::{Read, Write};
+
 use aes::cipher::{self, block_padding, generic_array, KeyInit, KeyIvInit};
 
 use crate::{
@@ -38,22 +39,42 @@ impl AesCodec {
         })
     }
 
-    fn do_block_mode<C>(&self, global_mode: CodecMode, key: &[u8], iv: &[u8], input: &mut dyn Read, output: &mut dyn Write) -> anyhow::Result<()>
-        where
-            C: 'static + cipher::BlockCipher + cipher::BlockEncryptMut + cipher::BlockDecryptMut + KeyInit {
+    fn do_block_mode<C>(
+        &self,
+        global_mode: CodecMode,
+        key: &[u8],
+        iv: &[u8],
+        input: &mut dyn Read,
+        output: &mut dyn Write,
+    ) -> anyhow::Result<()>
+    where
+        C: 'static
+            + cipher::BlockCipher
+            + cipher::BlockEncryptMut
+            + cipher::BlockDecryptMut
+            + KeyInit,
+    {
         match self.mode {
-            BlockCipherMode::Cbc => {
-                match global_mode {
-                    CodecMode::Encoding => encrypt(cbc::Encryptor::<C>::new_from_slices(key, iv)?, input, output),
-                    CodecMode::Decoding => decrypt(cbc::Decryptor::<C>::new_from_slices(key, iv)?, input, output),
+            BlockCipherMode::Cbc => match global_mode {
+                CodecMode::Encoding => encrypt(
+                    cbc::Encryptor::<C>::new_from_slices(key, iv)?,
+                    input,
+                    output,
+                ),
+                CodecMode::Decoding => decrypt(
+                    cbc::Decryptor::<C>::new_from_slices(key, iv)?,
+                    input,
+                    output,
+                ),
+            },
+            BlockCipherMode::Ecb => match global_mode {
+                CodecMode::Encoding => {
+                    encrypt(ecb::Encryptor::<C>::new_from_slice(key)?, input, output)
                 }
-            }
-            BlockCipherMode::Ecb => {
-                match global_mode {
-                    CodecMode::Encoding => encrypt(ecb::Encryptor::<C>::new_from_slice(key)?, input, output),
-                    CodecMode::Decoding => decrypt(ecb::Decryptor::<C>::new_from_slice(key)?, input, output),
+                CodecMode::Decoding => {
+                    decrypt(ecb::Decryptor::<C>::new_from_slice(key)?, input, output)
                 }
-            }
+            },
         }
     }
 }
@@ -64,10 +85,10 @@ impl CodecUsage for AesCodec {
             BlockCipherMode::Cbc => "    -K key
     -IV iv
 "
-                .to_string(),
+            .to_string(),
             BlockCipherMode::Ecb => "    -K key
 "
-                .to_string(),
+            .to_string(),
         }
     }
 }
@@ -96,7 +117,6 @@ impl Codec for AesCodec {
             BlockCipherMode::Ecb => Default::default(),
         };
 
-
         match self.cipher_type {
             BlockCipherType::Aes => match key.len() * 8 {
                 128 => self.do_block_mode::<aes::Aes128>(global_mode, key, iv, input, output),
@@ -115,7 +135,6 @@ impl Codec for AesCodec {
         Some(self)
     }
 }
-
 
 impl Sm4Codec {
     pub fn new_cbc() -> Box<Self> {
@@ -164,14 +183,13 @@ impl BlockCipherType {
     }
 }
 
-
 fn encrypt<M>(
     mut cipher: M,
     input: &mut dyn std::io::Read,
     mut output: &mut dyn std::io::Write,
 ) -> anyhow::Result<()>
-    where
-        M: 'static + cipher::BlockEncryptMut,
+where
+    M: 'static + cipher::BlockEncryptMut,
 {
     let block_size = M::block_size();
 
@@ -181,10 +199,11 @@ fn encrypt<M>(
     });
     std::io::copy(input, &mut writer)?;
 
-
-    writer
-        .finalize()
-        .death_rattle(|buf| Ok(Some(cipher.encrypt_padded_vec_mut::<block_padding::Pkcs7>(buf))))?;
+    writer.finalize().death_rattle(|buf| {
+        Ok(Some(
+            cipher.encrypt_padded_vec_mut::<block_padding::Pkcs7>(buf),
+        ))
+    })?;
 
     Ok(())
 }
@@ -194,8 +213,8 @@ fn decrypt<M>(
     mut input: &mut dyn std::io::Read,
     mut output: &mut dyn std::io::Write,
 ) -> anyhow::Result<()>
-    where
-        M: 'static + cipher::BlockDecryptMut, //  block_modes::BlockMode<C, block_padding::Pkcs7>,
+where
+    M: 'static + cipher::BlockDecryptMut, //  block_modes::BlockMode<C, block_padding::Pkcs7>,
 {
     let block_size = M::block_size();
 
@@ -227,24 +246,24 @@ fn decrypt<M>(
 }
 
 fn encrypt_blocks<M>(cipher: &mut M, mut plaintext_blocks: Vec<u8>) -> Vec<u8>
-    where
-        M: 'static + cipher::BlockEncryptMut,
+where
+    M: 'static + cipher::BlockEncryptMut,
 {
     cipher.encrypt_blocks_mut(to_blocks(&mut plaintext_blocks));
     plaintext_blocks
 }
 
 fn decrypt_blocks<M>(cipher: &mut M, mut ciphertext_blocks: Vec<u8>) -> Vec<u8>
-    where
-        M: 'static + cipher::BlockDecryptMut,
+where
+    M: 'static + cipher::BlockDecryptMut,
 {
     cipher.decrypt_blocks_mut(to_blocks(&mut ciphertext_blocks));
     ciphertext_blocks
 }
 
 fn to_blocks<N>(data: &mut [u8]) -> &mut [generic_array::GenericArray<u8, N>]
-    where
-        N: generic_array::ArrayLength<u8>,
+where
+    N: generic_array::ArrayLength<u8>,
 {
     let n = N::to_usize();
     debug_assert!(data.len() % n == 0);
@@ -257,4 +276,3 @@ fn to_blocks<N>(data: &mut [u8]) -> &mut [generic_array::GenericArray<u8, N>]
         )
     }
 }
-
