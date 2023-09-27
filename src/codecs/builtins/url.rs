@@ -41,23 +41,20 @@ impl Codec for UrlCodec {
                 Ok(())
             }
             CodecMode::Decoding => {
-                let mut reader = BytesToBytesDecoder::new(
-                    &mut input,
-                    Box::new(|buf| {
-                        let split_at = buf
-                            .iter()
-                            .rev()
-                            .position(|&b| b == b'%')
-                            .map(|rev_pos| buf.len() - rev_pos - 1)
-                            .and_then(|pos| if buf.len() - pos < 3 { Some(pos) } else { None })
-                            .unwrap_or(buf.len());
+                let mut reader = BytesToBytesDecoder::new(&mut input, |buf| {
+                    let split_at = buf
+                        .iter()
+                        .rev()
+                        .position(|&b| b == b'%')
+                        .map(|rev_pos| buf.len() - rev_pos - 1)
+                        .and_then(|pos| if buf.len() - pos < 3 { Some(pos) } else { None })
+                        .unwrap_or(buf.len());
 
-                        let (bytes, remain) = buf.split_at(split_at);
+                    let (bytes, remain) = buf.split_at(split_at);
 
-                        let result = percent_encoding::percent_decode(bytes).collect();
-                        Ok((result, remain))
-                    }),
-                );
+                    let result = percent_encoding::percent_decode(bytes).collect();
+                    Ok((result, remain))
+                });
 
                 std::io::copy(&mut reader, output)?;
 

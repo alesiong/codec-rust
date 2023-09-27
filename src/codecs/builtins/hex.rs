@@ -39,23 +39,19 @@ impl Codec for HexCodec {
                 Ok(())
             }
             crate::codecs::CodecMode::Decoding => {
-                let mut reader = BytesToBytesDecoder::new(
-                    &mut input,
-                    Box::new(|buf| {
-                        let split_at = if buf.len() % 2 == 0 {
-                            buf.len()
-                        } else {
-                            buf.len() - 1
-                        };
+                let mut reader = BytesToBytesDecoder::new(&mut input, |buf| {
+                    let split_at = if buf.len() % 2 == 0 {
+                        buf.len()
+                    } else {
+                        buf.len() - 1
+                    };
 
-                        let (input, remain) = buf.split_at(split_at);
-                        let output = hex::decode(input).map_err(|err| {
-                            std::io::Error::new(std::io::ErrorKind::InvalidData, err)
-                        })?;
+                    let (input, remain) = buf.split_at(split_at);
+                    let output = hex::decode(input)
+                        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
 
-                        Ok((output, remain))
-                    }),
-                );
+                    Ok((output, remain))
+                });
 
                 std::io::copy(&mut reader, output)?;
                 Ok(())

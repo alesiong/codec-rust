@@ -218,17 +218,14 @@ where
 {
     let block_size = M::block_size();
 
-    let mut reader = BytesToBytesDecoder::new(
-        &mut input,
-        Box::new(|buf| {
-            let (blocks, remain) = if buf.len() % block_size == 0 {
-                buf.split_at(buf.len() - block_size)
-            } else {
-                buf.split_at(buf.len() - buf.len() % block_size)
-            };
-            Ok((decrypt_blocks(&mut cipher, blocks.to_vec()), remain))
-        }),
-    );
+    let mut reader = BytesToBytesDecoder::new(&mut input, |buf| {
+        let (blocks, remain) = if buf.len() % block_size == 0 {
+            buf.split_at(buf.len() - block_size)
+        } else {
+            buf.split_at(buf.len() - buf.len() % block_size)
+        };
+        Ok((decrypt_blocks(&mut cipher, blocks.to_vec()), remain))
+    });
 
     reader.set_need_finalize(true);
 

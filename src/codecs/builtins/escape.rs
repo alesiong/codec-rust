@@ -30,35 +30,31 @@ impl Codec for EscapeCodec {
                 Ok(())
             }
             CodecMode::Decoding => {
-                let mut reader = BytesToBytesDecoder::new(
-                    &mut input,
-                    Box::new(|buf| {
-                        let str_ref =
-                            std::str::from_utf8(buf).map_err(into_io_invalid_data_error)?;
-                        // TODO: fix \ at the end
-                        let string = format!("\"{}", str_ref);
+                let mut reader = BytesToBytesDecoder::new(&mut input, |buf| {
+                    let str_ref = std::str::from_utf8(buf).map_err(into_io_invalid_data_error)?;
+                    // TODO: fix \ at the end
+                    let string = format!("\"{}", str_ref);
 
-                        let (result, remain) = match snailquote::unescape(&string) {
-                            Ok(s) => (s.into_bytes(), Default::default()),
-                            Err(err) => {
-                                let index = match err {
-                                    UnescapeError::InvalidEscape { index, .. } => index,
-                                    UnescapeError::InvalidUnicode { index, .. } => index,
-                                };
-                                let (_, remain, idx) = split_at_char_index(str_ref, index - 1);
-                                let result = snailquote::unescape(&string[..idx + 1]).unwrap();
-                                (result.into_bytes(), remain.as_bytes())
-                            } // Err(err) => {
-                              //     return Err(std::io::Error::new(
-                              //         std::io::ErrorKind::InvalidData,
-                              //         err,
-                              //     ))
-                              // }
-                        };
+                    let (result, remain) = match snailquote::unescape(&string) {
+                        Ok(s) => (s.into_bytes(), Default::default()),
+                        Err(err) => {
+                            let index = match err {
+                                UnescapeError::InvalidEscape { index, .. } => index,
+                                UnescapeError::InvalidUnicode { index, .. } => index,
+                            };
+                            let (_, remain, idx) = split_at_char_index(str_ref, index - 1);
+                            let result = snailquote::unescape(&string[..idx + 1]).unwrap();
+                            (result.into_bytes(), remain.as_bytes())
+                        } // Err(err) => {
+                          //     return Err(std::io::Error::new(
+                          //         std::io::ErrorKind::InvalidData,
+                          //         err,
+                          //     ))
+                          // }
+                    };
 
-                        Ok((result, remain))
-                    }),
-                );
+                    Ok((result, remain))
+                });
 
                 std::io::copy(&mut reader, output)?;
 

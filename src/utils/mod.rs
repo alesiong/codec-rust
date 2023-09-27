@@ -29,7 +29,7 @@ impl std::io::Write for MultiWriter<'_> {
     }
 }
 
-type Mapping<'a> = dyn 'a + FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>;
+// type Mapping<'a> = dyn 'a + FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>;
 // trait Finalizer = FnOnce(&[u8]) -> std::io::Result<Option<Vec<u8>>>;
 
 pub struct BytesToBytesEncoder<'w, W, M>
@@ -128,12 +128,12 @@ where
     }
 }
 
-pub struct BytesToBytesDecoder<'a, R>
+pub struct BytesToBytesDecoder<'a, R, M>
 where
     R: 'a + std::io::Read,
 {
     reader: &'a mut R,
-    mapping: Box<Mapping<'a>>,
+    mapping: M,
     write_buffer: Vec<u8>,
     remain_buffer: Vec<u8>,
     index_remain: usize,
@@ -141,11 +141,12 @@ where
     need_finalize: bool,
 }
 
-impl<'a, R> BytesToBytesDecoder<'a, R>
+impl<'a, R, M> BytesToBytesDecoder<'a, R, M>
 where
     R: 'a + std::io::Read,
+    M: FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>,
 {
-    pub fn new(reader: &'a mut R, mapping: Box<Mapping<'a>>) -> Self {
+    pub fn new(reader: &'a mut R, mapping: M) -> Self {
         Self {
             reader,
             mapping,
@@ -173,7 +174,7 @@ where
     }
 }
 
-impl<'a, R> Drop for BytesToBytesDecoder<'a, R>
+impl<'a, R, M> Drop for BytesToBytesDecoder<'a, R, M>
 where
     R: 'a + std::io::Read,
 {
@@ -204,9 +205,10 @@ where
     }
 }
 
-impl<R> std::io::Read for BytesToBytesDecoder<'_, R>
+impl<'a, R, M> std::io::Read for BytesToBytesDecoder<'a, R, M>
 where
     R: std::io::Read,
+    M: FnMut(&[u8]) -> std::io::Result<(Vec<u8>, &[u8])>,
 {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         if self.remain_buffer_len() > 0 {
