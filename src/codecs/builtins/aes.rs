@@ -4,7 +4,7 @@ use aes::cipher::{self, block_padding, generic_array, KeyInit, KeyIvInit};
 
 use crate::{
     codecs::{Codec, CodecMode, CodecUsage, Options},
-    utils::{BytesToBytesDecoder, BytesToBytesEncoder},
+    utils::{BytesToBytesDecoder, BytesToBytesEncoder, DeathRattle},
 };
 
 pub struct AesCodec {
