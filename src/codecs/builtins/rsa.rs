@@ -207,23 +207,23 @@ fn get_padding_scheme(padding: &str, hash: &str) -> anyhow::Result<OaepOrPkcs15>
     Ok(scheme)
 }
 
-#[enum_delegate::implement(PaddingScheme,
-trait PaddingScheme {
-    fn decrypt<Rng: CryptoRngCore>(
-        self,
-        rng: Option<&mut Rng>,
-        priv_key: &RsaPrivateKey,
-        ciphertext: &[u8],
-    ) -> rsa::Result<Vec<u8>>;
-    fn encrypt<Rng: CryptoRngCore>(
-        self,
-        rng: &mut Rng,
-        pub_key: &RsaPublicKey,
-        msg: &[u8],
-    ) -> rsa::Result<Vec<u8>>;
-}
-)]
 enum OaepOrPkcs15 {
     Oaep(Oaep),
     Pkcs15(Pkcs1v15Encrypt),
+}
+
+impl PaddingScheme for OaepOrPkcs15 {
+    fn decrypt<Rng: CryptoRngCore>(self, rng: Option<&mut Rng>, priv_key: &RsaPrivateKey, ciphertext: &[u8]) -> rsa::Result<Vec<u8>> {
+        match self {
+            OaepOrPkcs15::Oaep(v) => v.decrypt(rng, priv_key, ciphertext),
+            OaepOrPkcs15::Pkcs15(v) => v.decrypt(rng, priv_key, ciphertext),
+        }
+    }
+
+    fn encrypt<Rng: CryptoRngCore>(self, rng: &mut Rng, pub_key: &RsaPublicKey, msg: &[u8]) -> rsa::Result<Vec<u8>> {
+        match self {
+            OaepOrPkcs15::Oaep(v) => v.encrypt(rng, pub_key, msg),
+            OaepOrPkcs15::Pkcs15(v) => v.encrypt(rng, pub_key, msg),
+        }
+    }
 }

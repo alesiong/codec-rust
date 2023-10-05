@@ -1,3 +1,4 @@
+#[cfg(feature = "libc")]
 mod aes;
 mod append;
 mod base64;
@@ -18,6 +19,7 @@ mod url;
 #[cfg(feature = "libc")]
 mod zlib;
 
+#[cfg(feature = "libc")]
 pub use self::aes::*;
 pub use self::base64::*;
 pub use self::hex::*;

@@ -147,9 +147,13 @@ fn parse_text(tokenizer: &mut Tokenizer) -> Result<commands::Text> {
     tokenizer.next();
 
     // TODO: escape parenthesis
-    // TODO: allow empty sub-codecs syntax
     let text = if str == OPENING_PARENTHESIS {
         let input = tokenizer.next().unwrap_or_default();
+        // empty sub-codec syntax: [ [] cat -c ]
+        if input == CLOSING_PARENTHESIS {
+            return Ok(commands::Text::String(Default::default()));
+        }
+
         let mut codecs = vec![];
 
         while let Some(codec) = parse_codec(tokenizer)? {

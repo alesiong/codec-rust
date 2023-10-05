@@ -39,11 +39,16 @@ fn load_builtins() -> codecs::CodecMetaInfo {
     meta_info.register_codec::<RedirectCodecs>("redirect");
     meta_info.register_codec::<Base64Codec>("base64");
     meta_info.register_codec::<HexCodec>("hex");
+    #[cfg(feature = "libc")]
     meta_info.register("aes-cbc", AesCodec::new_cbc());
+    #[cfg(feature = "libc")]
     meta_info.register("aes-ecb", AesCodec::new_ecb());
+    #[cfg(feature = "libc")]
     meta_info.register("sm4-cbc", Sm4Codec::new_cbc());
+    #[cfg(feature = "libc")]
     meta_info.register("sm4-ecb", Sm4Codec::new_ecb());
     meta_info.register("md5", HashCodec::new_md5());
+    #[cfg(feature = "libc")]
     meta_info.register("sha256", HashCodec::new_sha256());
     meta_info.register("sm3", HashCodec::new_sm3());
     meta_info.register_codec::<UrlCodec>("url");

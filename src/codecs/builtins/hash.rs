@@ -11,6 +11,7 @@ pub struct HashCodec {
 
 enum HashType {
     Md5,
+    #[cfg(feature = "libc")]
     Sha256,
     Sm3,
 }
@@ -22,6 +23,7 @@ impl HashCodec {
         })
     }
 
+    #[cfg(feature = "libc")]
     pub fn new_sha256() -> Box<Self> {
         Box::new(HashCodec {
             hash_type: HashType::Sha256,
@@ -46,6 +48,7 @@ impl Codec for HashCodec {
         match global_mode {
             CodecMode::Encoding => match self.hash_type {
                 HashType::Md5 => digest::<md5::Md5>(input, output),
+                #[cfg(feature = "libc")]
                 HashType::Sha256 => digest::<sha2::Sha256>(input, output),
                 HashType::Sm3 => digest::<sm3::Sm3>(input, output),
             },
